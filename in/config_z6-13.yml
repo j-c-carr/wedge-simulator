@@ -1,0 +1,12 @@
+---
+lightcone_params:
+
+  z6-15: 
+    cache_name: "z6-15"
+    num_samples: 64
+    lightcone_shape: !!python/tuple [710, 64, 64]
+    lightcone_dimensions: !!python/tuple [2840, 256, 256]
+    p21c_kwargs:
+      redshift: 5
+      max_redshift: 18
+      user_params: {HII_DIM: 64, BOX_LEN: 256, N_THREADS: 5, USE_INTERPOLATION_TABLES: True}
