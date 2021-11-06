@@ -27,7 +27,7 @@ optional arguments:
   -h, --help          show this help message and exit
   --make_coeval_dset  generate coeval boxes dataset
 ```
-All `21cmfast` parameters can be supplied in a YAML configuration file (see `coeval-simulator/in/` or `lightcone-simulator/in/` for examples).
+All `21cmfast` parameters are specified in the `config_file` (see `coeval-simulator/in/` or `lightcone-simulator/in/` for examples).
 
 #### coeval-simulator
 Generates a dataset consisting of `21cmFAST` coeval boxes (brightness temperature data) and the corresponding wedge-filtered boxes. The wedge filtering algorithm is described in [Gagnon-Hartman et. al, 2021](https://ui.adsabs.harvard.edu/abs/2021MNRAS.504.4716G/abstract)
