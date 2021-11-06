@@ -76,18 +76,25 @@ def pct_based_bar(x: np.ndarray,
 
     return x
 
-def bar(x, maximum):
+
+def bar(x: np.ndarray, 
+        maximum: int) -> np.ndarray:
     """
-    Applies blind bar to Fourier space.
+    Removes smooth foreground contamination from 21cm lightcone.
+    ----------
+    Params:
+    :x: (np.ndarray) fourier-transformed lightcone.
+    :maximum: (int) maximum fourier mode in k_parallel direction (corresponding
+                    to an index along axis 0) to remove.
+    ----------
+    Returns:
+    :x: (np.ndarray) fourier-transformed lightcone with smooth foregrounds
+                     removed.
     """
-    DIM = np.shape(x)[0]
-    half = int(DIM/2)
-    DIMT = np.shape(x)[1]
-    minimum = -1*maximum
-    zeros = np.zeros((DIMT, DIMT)).astype(np.float16)
-    for i in range(DIMT):
-        if minimum<i-half<=maximum:
-            x[i] = zeros
+
+    center = x.shape[0]//2
+    x[center-maximum:center+maximum] = 0
+
     return x
 
 
@@ -113,6 +120,7 @@ def sweep(x: np.ndarray,
 
     wedge_angle = 90 - (np.arctan(wedge_boundary_slope) * 180 / np.pi)
 
+    # Accounts for difference in resolution
     delta = x.shape[0] / x.shape[1]
 
     for i in range(mid):

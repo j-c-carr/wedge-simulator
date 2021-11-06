@@ -4,11 +4,9 @@ import yaml
 import h5py
 import typing
 from typing import Optional, List
-import pprint
 import logging
 import numpy as np
 import py21cmfast as p21c
-from pprint import pprint, pformat
 from random import randint
 
 
@@ -112,14 +110,12 @@ class LightconeManager():
     def generate_lightcones(self,
                             debug: bool = False) -> List[np.ndarray]:
         """
-        Wrapper class for generating lightcones using the 21cmFAST run_lightcones method. 
-        -----
-        Params:
-        :seed: Seed for random generation. 
+        Wrapper class for generating lightcones using the 21cmFAST 
+        p21c.run_lightcones method. 
         -----
         Returns:
         :X: (np.ndarray) Brightness temperature data from lightcones
-        :lightcone_redshifts: (np.ndarray) redshifts of lightcones
+        :lightcone_redshifts: (np.ndarray) redshifts values of the lightcones
         """
 
         X = np.empty((self.params["num_lightcones"],
@@ -149,8 +145,7 @@ class LightconeManager():
             lightcone = p21c.run_lightcone(
                     **self.params["p21c_run_lightcone_kwargs"],
                     random_seed = seed[i],
-                    direc="scratch/__tmp"
-                    )
+                    direc="scratch/__tmp")
             
             logger.debug("Lightcone dimensions: ",
                     lightcone.lightcone_dimensions)

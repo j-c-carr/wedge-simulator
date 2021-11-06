@@ -7,13 +7,10 @@ The transformations applied are performed in Fourier space and are meant to
 replicate the distortions and limitations of 'actual' datasets.
 
 """
-
-import typing
-from typing import List, Optional
-import matplotlib.pyplot as plt
 import logging
 import numpy as np
-from tqdm import tqdm
+import typing
+from typing import List, Optional
 from filters import coeval_bar, coeval_sweep
 
 
@@ -32,6 +29,11 @@ def init_logger(f: str,
 logger = init_logger("test.log", __name__)
 
 class FourierManager():
+    """
+    Wrapper class for removing the wedge of a 21cmFAST coeval box in fourier
+    space. The wedge region that is removed is described in
+    https://arxiv.org/pdf/1404.2596.pdf (Liu et al., 2014)
+    """
 
     def fourier(self,
                 x: np.ndarray) -> np.ndarray:
@@ -50,38 +52,48 @@ class FourierManager():
 
 
     def remove_wedge(self, 
-                     images: np.ndarray,
+                     boxes: np.ndarray,
                      redshifts: np.ndarray) -> np.ndarray:
-        """Performs wedge-removal in fourier space for each coeval box.
-        images = coeval boxes generated from p21cmfast, masks = wedge-filtered
-        boxes.
+        """
+        Performs wedge-removal in fourier space for each coeval box. The
+        wedge-shaped region that is removed is formalised in 
+        https://arxiv.org/pdf/1404.2596.pdf. The implementation of
+        wedge-removal is described in Gagnon-Hartmen et al.,
+        https://arxiv.org/pdf/2102.08382.pdf
+        ----------
+        Params:
+        :boxes: Coeval boxes brightness temperature data generated from 
+                21cmFAST
+        :redshifts: Redshifts corresponding to each coeval box
+        ----------
+        Returns:
+        :wedge_filtered_boxes: (np.ndarray) coeval boxes with the wedge-region
+                               removed.
         """
 
-        assert images.dtype == np.float32, \
-            f"Images of dtype {images.dtype}, should be np.float32"
+        assert boxes.dtype == np.float32, \
+            f"Boxes of dtype {boxes.dtype}, should be np.float32"
 
-        assert images.shape[0] == redshifts.shape[0], \
-            "Should be one redshift per image"
+        assert boxes.shape[0] == redshifts.shape[0], \
+            "Should be one redshift per box"
 
-        masks = np.empty(images.shape)
-        print(f"masks shape: {masks.shape}")
-        for i, image in enumerate(images):
+        wedge_filtered_boxes = np.empty(boxes.shape)
+        for i, box in enumerate(boxes):
 
-            transformed_image = np.empty(image.shape)
+            transformed_box = np.empty(box.shape)
 
-            # Apply Fourier transform to layer
-            self.fourier_data = self.fourier(image)
+            self.fourier_data = self.fourier(box)
 
-            # Apply chosen transformations to layer
+            # coeval_bar removes smooth foregrounds
             coeval_bar(self.fourier_data, 2)
+            # coeval_sweep removes wedge-shaped region
             coeval_sweep(self.fourier_data, redshifts[i])
 
             # Apply inverse fourier transform to layer
-            transformed_image = np.real(self.inverse(self.fourier_data))
+            transformed_box = np.real(self.inverse(self.fourier_data))
 
-            # Convert to proper data type
-            transformed_image = transformed_image.astype(np.float32)
-            masks[i] = transformed_image
+            transformed_box = transformed_box.astype(np.float32)
+            wedge_filtered_boxes[i] = transformed_box
 
-        return masks
+        return wedge_filtered_boxes
 

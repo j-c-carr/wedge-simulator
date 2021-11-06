@@ -58,8 +58,14 @@ def make_dir(dirname: str) -> None:
 
 
 def make_coeval_dset(all_params: dict, 
-               args: argparse.ArgumentParser) -> None:
-    """Generates lightcones and masks for each set of initial conditions"""
+                     args: argparse.ArgumentParser) -> None:
+    """
+    Generates a dataset of coeval boxes and associated wedge-filtered boxes,
+    saving it to an h5 file.
+    ----------
+    Params:
+    :all_params: (dict) All the parameters specified in config file
+    """
 
 
     with h5py.File(f"scratch/datasets/{args.name}.h5", "w") as hf:
@@ -72,10 +78,11 @@ def make_coeval_dset(all_params: dict,
 
         FM = FourierManager()
 
+        # Default redshifts are z=7, 8.5, 9
         if "redshifts" in all_params:
             redshifts = np.array(all_params["redshifts"])
         else:
-            redshifts = np.linspace(7., 8.5, 8)
+            redshifts = np.linspace(7., 8.5, 9)
 
         original_boxes = CM.generate_coeval_boxes(redshifts)
         wedge_filtered_boxes = FM.remove_wedge(original_boxes, redshifts)
@@ -84,9 +91,10 @@ def make_coeval_dset(all_params: dict,
         hf.create_dataset(f"wedge_filtered_boxes", data=wedge_filtered_boxes)
         hf.create_dataset(f"redshifts", data=redshifts)
 
-        # Store meta data 
+        # Store p21c initial conditions to dataset
         hf.attrs["p21c_initial_conditions"] = str(CM.ic_kwargs)
 
+        # On success
         LOGGER.info("\n----------\n")
         LOGGER.info(f"h5py file created at scratch/datasets/{args.name}.h5")
         LOGGER.info("Contents:")

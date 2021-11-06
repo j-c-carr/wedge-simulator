@@ -7,55 +7,82 @@ import logging
 import numpy as np
 import py21cmfast as p21c
 
-def init_logger(f, name):
+def init_logger(name, f: Optional[str] = None):
     """Instantiates logger :name: and sets logfile to :f:"""
     logger = logging.getLogger(name)
 
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter("%(asctime)s: %(levelname).1s %(filename)s:%(lineno)d] %(message)s")
-    file_handler = logging.FileHandler(f)
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
+    if f is not None:
+        file_handler = logging.FileHandler(f)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
     return logger
 
-logger = init_logger("test.log", __name__)
+logger = init_logger(__name__, "test.log")
 
 
 class CoevalManager():
 
-    """Class for generating coeval boxes. """
+    """
+    Class for generating coeval boxes from p21cmFAST.
+    Boxes are created from a single p21c.InitialConditions object, with gets
+    instantiated based on the parameters supplied by the user in the config
+    file.
+    """
 
     def __init__(self, ic_kwargs: Optional[dict] = None):
-        """ic_kwargs: arguments to supply to initial conditions"""
+        """ic_kwargs: arguments to supply to p21c.initial_conditions"""
+
         if ic_kwargs is None:
-            self.ic_kwargs = {"user_params": {"HII_DIM": 128, "BOX_LEN": 128}}
-        else:
-            self.ic_kwargs = ic_kwargs
+            ic_kwargs = {"user_params": {"HII_DIM": 128, "BOX_LEN": 128},
+                         "random_seed": 0}
+
+        assert "HII_DIM" in ic_kwargs["user_params"] and \
+               "BOX_LEN" in ic_kwargs["user_params"] and \
+               "random_seed" in ic_kwargs, \
+               "Must supply BOX_LEN, HII_DIM and random_seed" 
+
+        self.ic_kwargs = ic_kwargs
+        self.box_shape = (ic_kwargs["user_params"]["BOX_LEN"],
+                          ic_kwargs["user_params"]["BOX_LEN"],
+                          ic_kwargs["user_params"]["BOX_LEN"])
 
 
     def generate_coeval_boxes(self, redshifts: np.ndarray):
-        """Generates coeval boxes at given redshifts using the initial
-        conditions specified in the constructor"""
+        """
+        Generates coeval boxes at given redshifts using the initial
+        condition parameters specified in the constructor.
+        ----------
+        Params:
+        :redshifts: (np.ndarray) redshift of each coeval box
+        ----------
+        Returns:
+        :X: (np.ndarray) coeval boxes TRANSPOSED so that the los axis is the
+                         first axis
+        """
 
         logger.debug(f"Generating initial conditions...")
         initial_conditions = p21c.initial_conditions(**self.ic_kwargs)
 
-        X = np.empty((redshifts.shape[0], 128, 128, 128), dtype=np.float32)
+        
+        X = np.empty((redshifts.shape[0], *self.box_shape), dtype=np.float32)
 
-        logger.debug("Generating lightcones...")
+        logger.debug("Generating coeval boxes...")
         for i, z in enumerate(redshifts):
 
             coeval_box = p21c.run_coeval(
                     redshift = z,
                     init_box = initial_conditions)
 
-            # Make the LoS along the x axis
+            # Make the LoS along the first axis
             bt = np.transpose(coeval_box.brightness_temp, (2,1,0))
 
-            # Assert the shapes match the config file
-            assert bt.shape == (128, 128, 128), \
+            # Assert the shapes match the expected shape
+            assert bt.shape == self.box_shape, \
                     "expected {} but got {}".format(
-                            (128, 128, 128), bt.shape)
+                            self.box_shape, bt.shape)
 
             X[i] = bt.astype(np.float32)
             logger.debug(f"Coeval box {i} done.")

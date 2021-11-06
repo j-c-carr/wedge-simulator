@@ -1,11 +1,9 @@
 """
-by Samuel Gagnon-Hartman, 2019
-modified by Jonathan Colaco Carr (jonathan.colacocarr@mail.mcgill.ca), 2021
+Author: Jonathan Colaco Carr (jonathan.colacocarr@mail.mcgill.ca), 2021
 
 This code removes the foreground wedge for 21cm lightcones.
 The transformations applied are performed in Fourier space and are meant to 
 replicate the distortions and limitations of 'actual' datasets.
-
 """
 
 import typing
@@ -33,6 +31,11 @@ def init_logger(f: str,
 logger = init_logger("test.log", __name__)
 
 class FourierManager():
+    """
+    Wrapper class for removing the wedge of a 21cmFAST coeval box in fourier
+    space. The wedge region that is removed is described in
+    https://arxiv.org/pdf/1404.2596.pdf (Liu et al., 2014)
+    """
 
     def fourier(self,
                 x: np.ndarray) -> np.ndarray:
@@ -54,23 +57,23 @@ class FourierManager():
                                      lightcones: np.ndarray, 
                                      redshifts: np.ndarray,
                                      starting_redshift: float,
-                                     n_los_pixels: int,
-                                     window_length: int = 128) -> List[np.ndarray]:
+                                     n_los_pixels: int) -> List[np.ndarray]:
         """
-        Applies wedge excision and noise filters to each lightcone.
-        Sweep is the wedge removal and bar is the smooth foreground removal
-        -----
+        Performs wedge-removal in fourier space for each lightcone as desrcibed
+        in Prelogovic et al, https://arxiv.org/abs/2107.00018.
+        ----------
         Params:
-        :lightcones: list 3D lightcones to be transformed
-        :redshifts: 1-D array of redshifts along the LoS
+        :lightcones: lightcone brightness temperature boxes generated from 
+                     21cmFAST.
+        :redshifts: 1-D array of redshifts along the LoS.
         :starting_redshift: determines redshift of the first slice of the
-                            lightcone
+                            lightcone.
         :n_los_pixels: number of pixels along the line of sight to be kept.
-        -----
+        ----------
         Returns:
-        :lightcones: list of original lightcones in the same range as 
-                     wedge_removed_lightcones
-        :wedge_filtered_lightcones: list of Wedge-removed lightcones
+        :lightcones: truncated version of the original lightcones that 
+                     match the starting redshift and n_los_pixels.
+        :wedge_filtered_lightcones: list of wedge-removed lightcones
         :redshifts: redshift values for each pixel along the los.
         """
 
@@ -82,6 +85,9 @@ class FourierManager():
 
         wedge_removed_lightcones = np.zeros(lightcones.shape)
 
+        # rolling window length should match length scales in the other
+        # directions.
+        window_length = lightcones.shape[-1]
         dz = window_length // 2
         start = np.where(np.floor(redshifts)==starting_redshift)[0][0]
 

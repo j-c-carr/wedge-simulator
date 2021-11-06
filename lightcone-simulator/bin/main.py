@@ -25,23 +25,6 @@ from util_manager import UtilManager
 logging.getLogger().addHandler(logging.StreamHandler())
 
 
-
-def save_dataset_attrs(hf, 
-                       params: [dict, None] = None) -> None:
-    """
-    Params:
-    :hf: (h5py.File) h5py object, dataset file in write mode
-    :params: dictionary of parameters to save with data
-    """
-    # Save the parameters with the data
-    if params is not None:
-        for k,v in params.items():
-            try:
-                hf.attrs[str(k)] = str(v)
-            except TypeError:
-                continue
-
-
 def init_logger(f: str, 
                 name: str) -> logging.Logger:
     """Instantiates logger :name: and sets logfile to :f:"""
@@ -97,31 +80,30 @@ def plot_lightcones(all_params: dict,
     #                           CUBE_DIMENSIONS)
 
 
-def make_lightcones(all_params: dict, 
-               args: argparse.ArgumentParser) -> None:
-    """Generates lightcones and masks for each set of initial conditions"""
+def make_lightcone_dset(all_params: dict, 
+                        args: argparse.ArgumentParser) -> None:
+    """
+    Generates a dataset of lightcones and associated wedge-filtered lightcones,
+    saving it to an h5 file.
+    ----------
+    Params:
+    :all_params: (dict) All the parameters specified in config file
+    """
 
 
     with h5py.File(f"scratch/datasets/{args.name}.h5", "w") as hf:
 
         LM = LightconeManager(all_params)
         FM = FourierManager()
-        starting_redshift = all_params["final_starting_redshift"]
-        n_los_pixels = all_params["final_lightcone_shape"][0]
+
 
         p21c_lightcones, redshifts = LM.generate_lightcones()
 
-        # Binarize the lightcones BEFORE removing the mean along frequency axis
-        start = np.where(np.floor(redshifts)==starting_redshift)[0][0]
-        end = start + n_los_pixels
-
-        binarized_lightcones = (p21c_lightcones > 0).astype(np.uint8)
-        binarized_lightcones = binarized_lightcones[:, start:end]
-        
-        # Remove the mean along each frequency slice
+        # Remove the mean along each frequency slice to simulate observations
         p21c_lightcones -= p21c_lightcones.mean(axis=(2, 3), keepdims=True)
 
-
+        starting_redshift = all_params["final_starting_redshift"]
+        n_los_pixels = all_params["final_lightcone_shape"][0]
         lightcones, wedge_filtered_lightcones, redshifts = \
                 FM.remove_wedge_from_lightcones(p21c_lightcones, 
                                                 redshifts,
@@ -129,13 +111,12 @@ def make_lightcones(all_params: dict,
                                                         starting_redshift,
                                                 n_los_pixels = n_los_pixels)
 
-        # Truncate binarized lightcones to match X shape
-        hf.create_dataset("binarized_lightcones", data=binarized_lightcones)
+        hf.create_dataset("redshifts", data=redshifts)
         hf.create_dataset("lightcones", data=lightcones)
         hf.create_dataset("wedge_filtered_lightcones", 
                           data=wedge_filtered_lightcones)
-        hf.create_dataset("redshifts", data=redshifts)
-        hf.create_dataset("random_seeds", data=LM.params["lightcone_random_seeds"])
+        hf.create_dataset("random_seeds", 
+                          data=LM.params["lightcone_random_seeds"])
 
         # Save config data with dataset
         hf.attrs["p21c_run_lightcone_kwargs"] = \
@@ -160,7 +141,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("name", help="name of dataset. The dataset will be saved to scratch/datasets/<name>.h5")
     parser.add_argument("config_file", help="filepath to .yml configuration file")
-    parser.add_argument("--make_lightcones", action="store_true", help="generate lightcones")
+    parser.add_argument("--make_lightcone_dset", action="store_true", help="generate lightcones")
     parser.add_argument("--plot_lightcones", action="store_true", help="plot lightcones")
     parser.add_argument("--old_data", help="name of dataset to plot. The dataset will be loaded from scratch/datasets/<old_data>.h5")
 
@@ -179,8 +160,8 @@ if __name__=="__main__":
 
     UM = UtilManager()
 
-    if args.make_lightcones:
-        make_lightcones(all_params, args)
+    if args.make_lightcone_dset:
+        make_lightcone_dset(all_params, args)
 
     if args.plot_lightcones:
         plot_lightcones(all_params, args)
