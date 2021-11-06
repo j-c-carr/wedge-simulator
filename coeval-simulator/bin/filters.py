@@ -1,26 +1,11 @@
+"""
+Script for manipulating coeval boxes in Fourier space (to be used in
+fourier_manager.py)
+"""
 import typing
 from typing import Union
 import numpy as np
 from scipy.integrate import quad
-import matplotlib.pyplot as plt
-
-
-def blackman_harris_taper(x: np.ndarray) -> np.ndarray:
-    """Applies blackman harris taper function along line of sight in real space"""
-    a0 = 0.35875
-    a1 = 0.48829
-    a2 = 0.14128
-    a3 = 0.01168
-    N = x.shape[0]
-
-    bh = lambda n: a0 - \
-            a1 * np.cos(2*np.pi * n/N) + \
-            a2 * np.cos(4*np.pi * n/N) - \
-            a3 * np.cos(6*np.pi * n/N)
-
-    bh_window = np.array([bh(n) for n in range(N)])
-
-    return x * bh_window.reshape(-1, 1, 1)
 
 
 def compute_wedge_boundary(z: float, 
@@ -136,29 +121,22 @@ def remove_wedge(x: np.ndarray,
     return x
     
  
-def gaussian(x, std):
+def coeval_bar(x, maximum):
     """
-    Applies Gaussian bias to Fourier space.
+    Applies blind bar to Fourier space.
     """
-    x = x * prebuilt_gaussian
-    # plt.imshow(np.real(x)[:,:,99])
-    # plt.show()
+    DIM = np.shape(x)[0]
+    half = int(DIM/2)
+    DIMT = np.shape(x)[1]
+    minimum = -1*maximum
+    zeros = np.zeros((DIMT, DIMT)).astype(np.float16)
+    for i in range(DIMT):
+        if minimum<i-half<=maximum:
+            x[i] = zeros
     return x
 
 
-def nt1(x):
-    """
-    Scrambles phases for first null test
-    """
-    m = np.absolute(x)
-    phases = np.random.uniform(0, 2 * np.pi, size=np.shape(x))
-    u = m * np.cos(phases)
-    y = m * np.sin(phases)
-    f = u + 1j * y
-    return f
-
-
-def old_sweep(x, z, fill=False):
+def coeval_sweep(x, z, fill=False):
     """
     Applies blind cones to Fourier space.
     -alpha: the external angle of the cone w.r.t. the z=0 plane
@@ -189,39 +167,3 @@ def old_sweep(x, z, fill=False):
     print("Modes removed: ", 100*count/x.size)
     return x
 
-
-def old_bar(x, maximum):
-    """
-    Applies blind bar to Fourier space.
-    """
-    DIM = np.shape(x)[0]
-    half = int(DIM/2)
-    DIMT = np.shape(x)[1]
-    minimum = -1*maximum
-    zeros = np.zeros((DIMT, DIMT)).astype(np.float16)
-    for i in range(DIMT):
-        if minimum<i-half<=maximum:
-            x[i] = zeros
-    return x
-
-
-def plot_k_cylind():
-    plt.imshow(x_cylin, cmap="Greys", origin="lower", aspect="auto")
-    plt.colorbar()
-
-    # Plot wedge boundary
-    X = []
-    Y = []
-    for i in range(r):
-        if i*boundary < x.shape[0]:
-            X.append(i)
-            Y.append(i*boundary)
-        else:
-            break
-
-    _z = int(z)
-    plt.plot(X, Y, "k-")
-    plt.xlabel(r"$k_{\perp}$")
-    plt.ylabel(r"$k_{\parallel}$")
-    plt.savefig(f"removed_wedge_no_curvature_z_{_z}.png", dpi=400)
-    plt.close()

@@ -21,6 +21,9 @@ eor_colour = colors.LinearSegmentedColormap.from_list(
 plt.register_cmap(cmap=eor_colour)
 plt.style.use("lightcones/plot_styles.mplstyle")
 
+COLORS = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+print(COLORS)
+
 class LightconePlotManager():
 
     """Manager class for lightcone plotting functions."""
