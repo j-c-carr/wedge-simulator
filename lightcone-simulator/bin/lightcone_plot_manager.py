@@ -1,7 +1,6 @@
 from tqdm import tqdm
 import typing
 from typing import Optional, List
-from celluloid import Camera
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -19,7 +18,7 @@ eor_colour = colors.LinearSegmentedColormap.from_list(
     ],
 )
 plt.register_cmap(cmap=eor_colour)
-plt.style.use("lightcones/plot_styles.mplstyle")
+#plt.style.use("lightcones/plot_styles.mplstyle")
 
 COLORS = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 print(COLORS)

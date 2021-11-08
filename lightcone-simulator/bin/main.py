@@ -5,8 +5,6 @@ Generates a data set using 21cmFAST and wedge removal from fourier.py
 Data set is saved as a single h5 file
 """
 
-import os
-import sys
 import h5py
 import yaml
 import pprint
@@ -48,14 +46,6 @@ def read_params_from_yml_file(filename: str) -> dict:
         return params
     
 
-def make_dir(dirname: str) -> None:
-    """Wrapper for os.mkdir"""
-    try:
-        os.mkdir(dirname)
-    except FileExistsError:
-        print(f"\n----\tWarning: {dirname} is not empty\t----\n")
-
-
 def plot_lightcones(all_params: dict, 
                args: argparse.ArgumentParser) -> None:
     """Generates lightcones and masks for each set of initial conditions"""
@@ -91,7 +81,7 @@ def make_lightcone_dset(all_params: dict,
     """
 
 
-    with h5py.File(f"scratch/datasets/{args.name}.h5", "w") as hf:
+    with h5py.File(f"{args.dset_dir}/{args.dset_name}.h5", "w") as hf:
 
         LM = LightconeManager(all_params)
         FM = FourierManager()
@@ -126,7 +116,7 @@ def make_lightcone_dset(all_params: dict,
 
         # Success!
         logger.info("\n----------\n")
-        logger.info(f"h5py file created at scratch/datasets/{args.name}.h5")
+        logger.info(f"h5py file created at {args.dset_dir}/{args.dset_name}.h5")
         logger.info("Contents:")
         for k in hf.keys():
             logger.info("\t'{}', shape: {}".format(k, hf[k].shape))
@@ -139,11 +129,12 @@ def make_lightcone_dset(all_params: dict,
 def parse_args():
     """Handle the command line arguments"""
     parser = argparse.ArgumentParser()
-    parser.add_argument("name", help="name of dataset. The dataset will be saved to scratch/datasets/<name>.h5")
+    parser.add_argument("dset_dir", help="parent directory of dataset")
+    parser.add_argument("dset_name", help="name of dataset. The dataset will be saved to <dset_dir>/<dset_name>.h5")
     parser.add_argument("config_file", help="filepath to .yml configuration file")
     parser.add_argument("--make_lightcone_dset", action="store_true", help="generate lightcones")
     parser.add_argument("--plot_lightcones", action="store_true", help="plot lightcones")
-    parser.add_argument("--old_data", help="name of dataset to plot. The dataset will be loaded from scratch/datasets/<old_data>.h5")
+    parser.add_argument("--old_data", help="name of an existing dataset (only used for --plot_lightcones")
 
     args = parser.parse_args()
     return args

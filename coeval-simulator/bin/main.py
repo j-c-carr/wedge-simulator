@@ -5,8 +5,6 @@ Generates a coeval boxes using 21cmFAST and simulates wedge removal
 Data set is saved as a single h5 file
 """
 
-import os
-import sys
 import h5py
 import yaml
 import pprint
@@ -49,14 +47,6 @@ def read_params_from_yml_file(filename: str) -> dict:
         return params
     
 
-def make_dir(dirname: str) -> None:
-    """Wrapper for os.mkdir"""
-    try:
-        os.mkdir(dirname)
-    except FileExistsError:
-        print(f"\n----\tWarning: {dirname} is not empty\t----\n")
-
-
 def make_coeval_dset(all_params: dict, 
                      args: argparse.ArgumentParser) -> None:
     """
@@ -68,7 +58,7 @@ def make_coeval_dset(all_params: dict,
     """
 
 
-    with h5py.File(f"scratch/datasets/{args.name}.h5", "w") as hf:
+    with h5py.File(f"{args.dset_dir}/{args.dset_name}.h5", "w") as hf:
 
         # Load p21c initial condition parameters, if specified
         if "ic_kwargs" in all_params:
@@ -96,7 +86,7 @@ def make_coeval_dset(all_params: dict,
 
         # On success
         LOGGER.info("\n----------\n")
-        LOGGER.info(f"h5py file created at scratch/datasets/{args.name}.h5")
+        LOGGER.info(f"h5py file created at {args.dset_dir}/{args.dset_name}.h5")
         LOGGER.info("Contents:")
         for k in hf.keys():
             LOGGER.info("\t'{}', shape: {}".format(k, hf[k].shape))
@@ -107,10 +97,11 @@ def make_coeval_dset(all_params: dict,
 def parse_args():
     """Handle the command line arguments"""
     parser = argparse.ArgumentParser()
-    parser.add_argument("name", help="name of dataset. The dataset will be saved to scratch/datasets/<name>.h5")
+    parser.add_argument("dset_dir", help="parent directory of dataset")
+    parser.add_argument("dset_name", help="name of dataset. The dataset will be saved to <dset_dir>/<dset_name>.h5")
     parser.add_argument("config_file", help="filepath to .yml configuration file")
     parser.add_argument("--make_coeval_dset", action="store_true",\
-                        help="generate coeval boxes")
+                        help="generate coeval boxes dataset")
     args = parser.parse_args()
     return args
 

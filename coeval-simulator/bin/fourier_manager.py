@@ -58,7 +58,7 @@ class FourierManager():
         Performs wedge-removal in fourier space for each coeval box. The
         wedge-shaped region that is removed is formalised in 
         https://arxiv.org/pdf/1404.2596.pdf. The implementation of
-        wedge-removal is described in Gagnon-Hartmen et al.,
+        wedge-removal is described in Gagnon-Hartman et al.,
         https://arxiv.org/pdf/2102.08382.pdf
         ----------
         Params:
