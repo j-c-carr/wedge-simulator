@@ -30,7 +30,7 @@ optional arguments:
 All `21cmfast` parameters are specified in the `config_file` (see `coeval-simulator/in/` or `lightcone-simulator/in/` for examples).
 
 #### coeval-simulator
-Generates a dataset consisting of `21cmFAST` coeval boxes (brightness temperature data) and the corresponding wedge-filtered boxes. The wedge filtering algorithm is described in [Gagnon-Hartman et. al, 2021](https://ui.adsabs.harvard.edu/abs/2021MNRAS.504.4716G/abstract)
+Generates a dataset consisting of `21cmFAST` coeval boxes (brightness temperature data) and the corresponding wedge-filtered boxes. The wedge filtering algorithm is described in [Gagnon-Hartman et. al, 2021](https://ui.adsabs.harvard.edu/abs/2021MNRAS.504.4716G/abstract). A more elaborate outline of this code can be found on the [wiki](https://github.com/j-c-carr/wedge-simulator/wiki/coeval-simulator-workflow)
 
 #### lightcone-simulator
 Generates a dataset consisting of `21cmFAST` lightcones (brightness temperature data) and the corresponding wedge-filtered lightcones. The wedge filtering algorithm is described in [Prelogović et. al, 2021](https://ui.adsabs.harvard.edu/abs/2021arXiv210700018P/abstract)
