@@ -11,7 +11,7 @@ def init_logger(name, f: Optional[str] = None):
     """Instantiates logger :name: and sets logfile to :f:"""
     logger = logging.getLogger(name)
 
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(asctime)s: %(levelname).1s %(filename)s:%(lineno)d] %(message)s")
     if f is not None:
         file_handler = logging.FileHandler(f)
@@ -59,15 +59,18 @@ class CoevalManager():
         :redshifts: (np.ndarray) redshift of each coeval box
         ----------
         Returns:
-        :X: (np.ndarray) coeval boxes TRANSPOSED so that the los axis is the
-                         first axis
+        :BT: (np.ndarray) brightness temperature data, TRANSPOSED so that the
+                          los axis is the first axis
+        :XH: (np.ndarray) ionization data, TRANSPOSED so that the los axis is
+                          the first axis
         """
 
         logger.debug(f"Generating initial conditions...")
         initial_conditions = p21c.initial_conditions(**self.ic_kwargs)
 
         
-        X = np.empty((redshifts.shape[0], *self.box_shape), dtype=np.float32)
+        BT = np.empty((redshifts.shape[0], *self.box_shape), dtype=np.float32)
+        XH = np.empty((redshifts.shape[0], *self.box_shape), dtype=np.float32)
 
         logger.debug("Generating coeval boxes...")
         for i, z in enumerate(redshifts):
@@ -78,15 +81,17 @@ class CoevalManager():
 
             # Make the LoS along the first axis
             bt = np.transpose(coeval_box.brightness_temp, (2,1,0))
+            xh = np.transpose(coeval_box.xH_box, (2,1,0))
 
             # Assert the shapes match the expected shape
             assert bt.shape == self.box_shape, \
                     "expected {} but got {}".format(
                             self.box_shape, bt.shape)
 
-            X[i] = bt.astype(np.float32)
+            BT[i] = bt.astype(np.float32)
+            XH[i] = xh.astype(np.float32)
             logger.debug(f"Coeval box {i} done.")
 
-        return X
+        return BT, XH
 
         

@@ -49,8 +49,10 @@ def coeval_bar(x: np.ndarray,
     :x: (np.ndarray) fourier-transformed coeval box with smooth foregrounds
                      removed.
     """
-
     center = x.shape[0]//2
+    assert center-maximum > 0 and center+maximum < x.shape[0],\
+            "Number of foreground modes removed exceeds number of foreground modes"
+
     x[center-maximum:center+maximum] = 0
 
     return x

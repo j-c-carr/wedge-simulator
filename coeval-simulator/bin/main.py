@@ -45,8 +45,34 @@ def read_params_from_yml_file(filename: str) -> dict:
         params = yaml.load(file, Loader=yaml.FullLoader)
         LOGGER.debug(params)
         return params
-    
 
+
+def save_dset_to_hf(filename: str,
+                    data: dict,
+                    attrs: dict = {}):
+
+    with h5py.File(f"{args.dset_dir}/{args.dset_name}.h5", "w") as hf:
+
+        # Save datasets
+        for k, v in data.items():
+            hf.create_dataset(k, data=v)
+
+        # Save attributes
+        for k, v in attrs.items():
+            hf.attrs[k] = str(v)
+
+    # On success
+    LOGGER.info("\n----------\n")
+    LOGGER.info(f"h5py file created at {filename}")
+    LOGGER.info("Contents:")
+    for k in data.keys():
+        LOGGER.info("\t'{}', shape: {}".format(k, data[k].shape))
+    LOGGER.info("Attributes:")
+    for k in attrs.keys():
+        LOGGER.info("\t'{}': {}".format(k, attrs[k]))
+    LOGGER.info("\n----------\n")
+
+    
 def make_coeval_dset(all_params: dict, 
                      args: argparse.ArgumentParser) -> None:
     """
@@ -57,41 +83,29 @@ def make_coeval_dset(all_params: dict,
     :all_params: (dict) All the parameters specified in config file
     """
 
+    # Load p21c initial condition parameters, if specified
+    if "ic_kwargs" in all_params:
+        CM = CoevalManager(all_params["ic_kwargs"])
+    else:
+        CM = CoevalManager()
 
-    with h5py.File(f"{args.dset_dir}/{args.dset_name}.h5", "w") as hf:
+    FM = FourierManager()
 
-        # Load p21c initial condition parameters, if specified
-        if "ic_kwargs" in all_params:
-            CM = CoevalManager(all_params["ic_kwargs"])
-        else:
-            CM = CoevalManager()
+    # Default redshifts are z=7, 8.5, 9
+    if "redshifts" in all_params:
+        redshifts = np.array(all_params["redshifts"])
+    else:
+        redshifts = np.linspace(7, 8.5, 25)
 
-        FM = FourierManager()
+    bt_boxes, xh_boxes = CM.generate_coeval_boxes(redshifts)
+    wedge_filtered_boxes = FM.remove_wedge(bt_boxes, redshifts)
 
-        # Default redshifts are z=7, 8.5, 9
-        if "redshifts" in all_params:
-            redshifts = np.array(all_params["redshifts"])
-        else:
-            redshifts = np.linspace(7., 8.5, 9)
-
-        original_boxes = CM.generate_coeval_boxes(redshifts)
-        wedge_filtered_boxes = FM.remove_wedge(original_boxes, redshifts)
-
-        hf.create_dataset(f"original_boxes", data=original_boxes)
-        hf.create_dataset(f"wedge_filtered_boxes", data=wedge_filtered_boxes)
-        hf.create_dataset(f"redshifts", data=redshifts)
-
-        # Store p21c initial conditions to dataset
-        hf.attrs["p21c_initial_conditions"] = str(CM.ic_kwargs)
-
-        # On success
-        LOGGER.info("\n----------\n")
-        LOGGER.info(f"h5py file created at {args.dset_dir}/{args.dset_name}.h5")
-        LOGGER.info("Contents:")
-        for k in hf.keys():
-            LOGGER.info("\t'{}', shape: {}".format(k, hf[k].shape))
-        LOGGER.info("p21cmFAST params: {}".format(pprint.pformat(CM.ic_kwargs)))
-        LOGGER.info("\n----------\n")
+    save_dset_to_hf(f"{args.dset_dir}/{args.dset_name}.h5",
+                    {"redshifts": redshifts,
+                     "brightness_temp_boxes": bt_boxes,
+                     "wedge_filtered_brightness_temp_boxes": wedge_filtered_boxes,
+                     "ionized_boxes": xh_boxes},
+                    attrs = {"p21c_initial_conditions": CM.ic_kwargs})
 
 
 def parse_args():

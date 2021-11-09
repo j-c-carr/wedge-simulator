@@ -1,3 +1,10 @@
+**/data/
+**/tmp/
+**/out/
+
+##################
+#  Python stuff  #
+##################
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
