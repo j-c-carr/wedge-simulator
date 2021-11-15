@@ -2,7 +2,6 @@
 ############################################################################
 #  final_* variables contain information about lightcones post-processing  #
 ############################################################################
-
 num_lightcones: 64
 final_starting_redshift: 7
 final_lightcone_shape: !!python/tuple [256, 128, 128]
@@ -16,3 +15,9 @@ p21c_run_lightcone_kwargs:
   lightcone_quantities: !!python/tuple ["brightness_temp", "xH_box"]
   global_quantities: !!python/tuple ["brightness_temp", "xH_box"]
   direc: "/home/jccarr/scratch/tmp"
+
+# Astro param ranges, supply (min, max) values.
+astro_param_ranges: # NO HII_EFF to keep EoR in same range
+  ION_Tvir_MIN: [4, 6]
+  L_X: [38, 42]
+  NU_X_THRESH: [100, 1500]

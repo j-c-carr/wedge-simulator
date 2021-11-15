@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import logging
 import numpy as np
 from tqdm import tqdm
-from filters import blackman_harris_taper, bar, sweep
+from filters import blackman_harris_taper, bar, sweep, new_sweep
 from lightcone_plot_manager import LightconePlotManager
 
 
@@ -114,13 +114,11 @@ class FourierManager():
 
                 tmp_tilde = self.fourier(tmp)
                 tmp_tilde = bar(tmp_tilde, 2)
-                self.fourier_data = sweep(tmp_tilde, redshifts[z])
+                self.fourier_data = new_sweep(tmp_tilde, redshifts[z])
 
                 # No nan values
                 assert np.isnan(np.sum(self.fourier_data)) == False
-
-                # Inverse the transform and store the central slice
-                tmp = np.real(self.inverse(self.fourier_data)).astype(np.float32)
+                tmp = np.real(self.inverse(self.fourier_data))
 
                 # Copy the middle slice only
                 wedge_removed_lightcones[i, z] = np.copy(tmp[dz-1])

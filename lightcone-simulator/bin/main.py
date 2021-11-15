@@ -7,7 +7,7 @@ Data set is saved as a single h5 file
 
 import h5py
 import yaml
-import pprint
+from pprint import pprint, pformat
 import typing
 from typing import Optional
 import logging
@@ -69,6 +69,53 @@ def plot_lightcones(all_params: dict,
     #LPM = LightconePlotManager(redshifts, CUBE_SHAPE,
     #                           CUBE_DIMENSIONS)
 
+def save_dset_to_hf(filename: str,
+                    data: dict,
+                    attrs: dict = {},
+                    astro_param_values: Optional[dict] = None,
+                    astro_param_ranges: Optional[dict] = None):
+
+    with h5py.File(f"{args.dset_dir}/{args.dset_name}.h5", "w") as hf:
+
+        # Save datasets
+        for k, v in data.items():
+            hf.create_dataset(k, data=v)
+
+        # Save attributes
+        for k, v in attrs.items():
+            hf.attrs[k] = str(v)
+
+        # Save astro physical parameters, if available
+        if astro_param_values is not None:
+
+            astro_params = hf.create_group("astro_params")
+
+            # Save the ranges of random astro params
+            if astro_param_ranges is not None:
+                astro_params.attrs["astro_param_ranges"] = \
+                        str(astro_param_ranges)
+
+            # Save the values of all astro params
+            for k, v in astro_param_values.items():
+                astro_params.create_dataset(k, data=v)
+
+    # On success
+    logger.info("\n----------\n")
+    logger.info(f"h5py file created at {filename}")
+    logger.info("Datasets:")
+    for k in data.keys():
+        logger.info("\t'{}', shape: {}".format(k, data[k].shape))
+    logger.info("Attributes:")
+    for k in attrs.keys():
+        logger.info("\t'{}': {}".format(k, attrs[k]))
+
+    if astro_param_values is not None:
+        logger.info("AstroParams: ")
+        for k in astro_param_values.keys():
+            logger.info("\t'{}': {}".format(k, astro_param_values[k]))
+    logger.info("\n----------\n")
+
+
 
 def make_lightcone_dset(all_params: dict, 
                         args: argparse.ArgumentParser) -> None:
@@ -81,49 +128,45 @@ def make_lightcone_dset(all_params: dict,
     """
 
 
-    with h5py.File(f"{args.dset_dir}/{args.dset_name}.h5", "w") as hf:
+    LM = LightconeManager(all_params)
+    FM = FourierManager()
 
-        LM = LightconeManager(all_params)
-        FM = FourierManager()
+    p21c_lightcones, redshifts = LM.generate_lightcones()
 
+    # Remove the mean along each frequency slice to simulate observations
+    p21c_lightcones -= p21c_lightcones.mean(axis=(2, 3), keepdims=True)
 
-        p21c_lightcones, redshifts = LM.generate_lightcones()
+    starting_redshift = all_params["final_starting_redshift"]
+    start = np.where(np.floor(redshifts)==starting_redshift)[0][0]
+    n_los_pixels = all_params["final_lightcone_shape"][0]
 
-        # Remove the mean along each frequency slice to simulate observations
-        p21c_lightcones -= p21c_lightcones.mean(axis=(2, 3), keepdims=True)
+    xh_boxes = LM.p21c_XH[:, start:start+n_los_pixels]
 
-        starting_redshift = all_params["final_starting_redshift"]
-        n_los_pixels = all_params["final_lightcone_shape"][0]
-        lightcones, wedge_filtered_lightcones, redshifts = \
-                FM.remove_wedge_from_lightcones(p21c_lightcones, 
-                                                redshifts,
-                                                starting_redshift = \
-                                                        starting_redshift,
-                                                n_los_pixels = n_los_pixels)
+    lightcones, wedge_filtered_lightcones, redshifts = \
+            FM.remove_wedge_from_lightcones(p21c_lightcones, 
+                                            redshifts,
+                                            starting_redshift = \
+                                                    starting_redshift,
+                                            n_los_pixels = n_los_pixels)
 
-        hf.create_dataset("redshifts", data=redshifts)
-        hf.create_dataset("lightcones", data=lightcones)
-        hf.create_dataset("wedge_filtered_lightcones", 
-                          data=wedge_filtered_lightcones)
-        hf.create_dataset("random_seeds", 
-                          data=LM.params["lightcone_random_seeds"])
+    assert xh_boxes.shape == lightcones.shape, \
+            "shape of ionized boxes and lightcones match but got shapes" +\
+            f"{xh_boxes.shape} and {lightcones.shape}"
 
-        # Save config data with dataset
-        hf.attrs["p21c_run_lightcone_kwargs"] = \
-                str(all_params["p21c_run_lightcone_kwargs"])
-        hf.attrs["starting_redshift"] = str(redshifts[0])
-        hf.attrs["ending_redshift"] = str(redshifts[-1])
+    if hasattr(LM, "astro_param_values"):
+        astro_param_values = LM.astro_param_values
+    else:
+        astro_param_values = None
 
-        # Success!
-        logger.info("\n----------\n")
-        logger.info(f"h5py file created at {args.dset_dir}/{args.dset_name}.h5")
-        logger.info("Contents:")
-        for k in hf.keys():
-            logger.info("\t'{}', shape: {}".format(k, hf[k].shape))
-
-        logger.info("p21.run_lightcone params:{}".format(\
-                pprint.pformat(all_params["p21c_run_lightcone_kwargs"])))
-        logger.info("\n----------\n")
+    save_dset_to_hf(f"{args.dset_dir}/{args.dset_name}.h5",
+                    {"random_seeds": LM.params["lightcone_random_seeds"], 
+                     "redshifts": redshifts,
+                     "lightcones": lightcones,
+                     "wedge_filtered_lightcones": wedge_filtered_lightcones,
+                     "ionized_boxes": xh_boxes},
+                    attrs = {"p21c_run_lightcone_kwargs": \
+                             str(all_params["p21c_run_lightcone_kwargs"])},
+                    astro_param_values = astro_param_values)
         
 
 def parse_args():
@@ -147,7 +190,7 @@ if __name__=="__main__":
     all_params = read_params_from_yml_file(args.config_file)
     logger = init_logger("test.log", __name__)
 
-    np.random.seed(0)
+    #np.random.seed(0)
 
     UM = UtilManager()
 
@@ -156,3 +199,4 @@ if __name__=="__main__":
 
     if args.plot_lightcones:
         plot_lightcones(all_params, args)
+

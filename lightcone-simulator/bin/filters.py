@@ -113,7 +113,7 @@ def sweep(x: np.ndarray,
             f"expected square base but got shape x.shape[1:]"
 
     eps = 1e-18
-    mid = x.shape[0]//2
+    mid = x.shape[0]//2 # middle along los_direction
     core = x.shape[1]//2
 
     wedge_boundary_slope = compute_wedge_boundary(z, fov_angle)
@@ -126,20 +126,76 @@ def sweep(x: np.ndarray,
     for i in range(mid):
         # Get threshold value for k_perp in Mpc
         k_parallel = i 
-        radius = k_parallel / (wedge_boundary_slope + eps)
+        radius = int(np.ceil(k_parallel / (wedge_boundary_slope + eps)))
 
         for j in range(core):
             for k in range(core):
 
                 k_perp = np.sqrt(j**2 + k**2)
                 if (delta*k_perp) > radius:
-                    x[mid+i,core+j,core+k] = 0j
-                    x[mid-i-1,core+j,core+k] = 0j
-                    x[mid+i,core-j-1,core+k] = 0j
-                    x[mid-i-1,core-j-1,core+k] = 0j
-                    x[mid+i,core+j,core-k-1] = 0j
-                    x[mid-i-1,core+j,core-k-1] = 0j
-                    x[mid+i,core-j-1,core-k-1] = 0j
-                    x[mid-i-1,core-j-1,core-k-1] = 0j
+                    x[mid+i, core+j, core+k] = 0j
+                    x[mid-i-1, core+j, core+k] = 0j
+                    x[mid+i, core-j-1, core+k] = 0j
+                    x[mid-i-1, core-j-1, core+k] = 0j
+                    x[mid+i, core+j, core-k-1] = 0j
+                    x[mid-i-1, core+j, core-k-1] = 0j
+                    x[mid+i, core-j-1, core-k-1] = 0j
+                    x[mid-i-1, core-j-1, core-k-1] = 0j
     return x
 
+
+def new_sweep(x: np.ndarray, 
+              z: float,
+              fov_angle: float = 90.) -> np.ndarray:
+    """
+    Applies blind cones to Fourier space, taking advantage of 8-fold symmetery
+    of the lightcone about the origin (center) of the box.
+    ----------
+    Parameters
+    :x: fourier-transformed lightcone
+    :z: redshift
+    """
+    assert x.shape[1] == x.shape[2], \
+            f"expected square base but got shape x.shape[1:]"
+
+    eps = 1e-18
+    mid = x.shape[0]//2 # middle along los_direction
+    core = x.shape[1]//2
+
+    wedge_boundary_slope = compute_wedge_boundary(z, fov_angle)
+
+    wedge_angle = 90 - (np.arctan(wedge_boundary_slope) * 180 / np.pi)
+
+    # Accounts for difference in resolution
+    delta = x.shape[0] / x.shape[1]
+
+    for i in range(mid):
+        # Get threshold value for k_perp in Mpc
+        k_parallel = i 
+        radius = int(np.ceil(k_parallel / (wedge_boundary_slope + eps)))
+
+
+        # Remove a box of width 2*radius
+        x[mid+i, core+radius+1:, :] = 0j
+        x[mid+i, :core-radius-2, :] = 0j
+        x[mid+i, :, core+radius+1:] = 0j
+        x[mid+i, :, :core-radius-2] = 0j
+        x[mid-i-1, core+radius+1:, :] = 0j
+        x[mid-i-1, :core-radius-2, :] = 0j
+        x[mid-i-1, :, core+radius+1:] = 0j
+        x[mid-i-1, :, :core-radius-2] = 0j
+
+        for j in range(radius+2):
+            for k in range(radius+2):
+                k_perp = np.sqrt(j**2 + k**2)
+                if (delta*k_perp) > radius:
+                    x[mid+i, core+j, core+k] = 0j
+                    x[mid-i-1, core+j, core+k] = 0j
+                    x[mid+i, core-j-1, core+k] = 0j
+                    x[mid-i-1, core-j-1, core+k] = 0j
+                    x[mid+i, core+j, core-k-1] = 0j
+                    x[mid-i-1, core+j, core-k-1] = 0j
+                    x[mid+i, core-j-1, core-k-1] = 0j
+                    x[mid-i-1, core-j-1, core-k-1] = 0j
+
+    return x
