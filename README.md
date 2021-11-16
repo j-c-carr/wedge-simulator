@@ -1,6 +1,10 @@
 # Wedge Simulator
 Code to simulate foreground wedge contamination on 21cmFAST lightcones/coeval boxes
 
+
+### Example
+![Alt Text](https://media.giphy.com/media/nZaB6NvjaESFCriCbt/giphy.gif)
+
 ### Quick start
 Requirements:
 * `python 3.6+`
