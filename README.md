@@ -16,6 +16,7 @@ Requirements:
 * `h5py`
 * `matplotlib` (optional, not required for generating datasets)
 
+A sample exectution of the program can be found in `coeval_wedge_simulator.sh`.
 For information about how to run the dataset generators, run
 ```
 python3 wedge-simulator/coeval-simulator/bin/main.py -h
@@ -31,10 +32,10 @@ optional arguments:
   -h, --help          show this help message and exit
   --make_coeval_dset  generate coeval boxes dataset
 ```
-All `21cmfast` parameters are specified in the `config_file` (see `coeval-simulator/in/` or `lightcone-simulator/in/` for examples).
+All `21cmfast` parameters are specified in the `config_file` (see `coeval-simulator/in/` or `lightcone-simulator/in/` for examples). The `dset_dir` should be located somehwere with a lot of memory (`21cmFAST` will store and retrieve information from there).
 
 #### coeval-simulator
-Generates a dataset consisting of `21cmFAST` coeval boxes (brightness temperature data) and the corresponding wedge-filtered boxes. The wedge filtering algorithm is described in [Gagnon-Hartman et. al, 2021](https://ui.adsabs.harvard.edu/abs/2021MNRAS.504.4716G/abstract). A more elaborate outline of this code can be found on the [wiki](https://github.com/j-c-carr/wedge-simulator/wiki/coeval-simulator-workflow)
+Generates a dataset consisting of `21cmFAST` coeval boxes (brightness temperature data and ionized boxes) and the corresponding wedge-filtered boxes. The wedge filtering algorithm is described in [Gagnon-Hartman et. al, 2021](https://ui.adsabs.harvard.edu/abs/2021MNRAS.504.4716G/abstract). A more elaborate outline of this code can be found on the [wiki](https://github.com/j-c-carr/wedge-simulator/wiki/coeval-simulator-workflow)
 
 #### lightcone-simulator
-Generates a dataset consisting of `21cmFAST` lightcones (brightness temperature data) and the corresponding wedge-filtered lightcones. The wedge filtering algorithm is described in [Prelogović et. al, 2021](https://ui.adsabs.harvard.edu/abs/2021arXiv210700018P/abstract)
+Generates a dataset consisting of `21cmFAST` lightcones (brightness temperature data and ionized boxes) and the corresponding wedge-filtered lightcones. The wedge filtering algorithm is described in [Prelogović et. al, 2021](https://ui.adsabs.harvard.edu/abs/2021arXiv210700018P/abstract)
