@@ -66,8 +66,7 @@ def plot_lightcones(all_params: dict,
     count_B = np.count_nonzero(B==0)
     print("Ionized pixels total: ", count_B)
     print("Maybe ionized pixels in Y: ", count_Y)
-    #LPM = LightconePlotManager(redshifts, CUBE_SHAPE,
-    #                           CUBE_DIMENSIONS)
+
 
 def save_dset_to_hf(filename: str,
                     data: dict,
@@ -116,6 +115,71 @@ def save_dset_to_hf(filename: str,
     logger.info("\n----------\n")
 
 
+def make_fixed_lightcone_dset(all_params: dict, 
+                        args: argparse.ArgumentParser) -> None:
+    """
+    Generates a dataset of lightcones and associated wedge-filtered lightcones,
+    saving it to an h5 file.
+    ----------
+    Params:
+    :all_params: (dict) All the parameters specified in config file
+    """
+
+
+    LM = LightconeManager(all_params)
+    FM = FourierManager()
+
+    p21c_lightcones, _redshifts = LM.generate_lightcones()
+
+    # Remove the mean along each frequency slice to simulate observations
+    p21c_lightcones -= p21c_lightcones.mean(axis=(2, 3), keepdims=True)
+
+    starting_redshift = all_params["final_starting_redshift"]
+    start = np.where(np.floor(_redshifts)==starting_redshift)[0][0]
+    n_los_pixels = all_params["final_lightcone_shape"][0]
+
+    xh_boxes = LM.p21c_XH[:, start:start+n_los_pixels]
+
+    lightcones, wedge_filtered_lightcones_low, redshifts = \
+            FM.remove_fixed_wedge_from_lightcones(p21c_lightcones, 
+                                                  _redshifts,
+                                                  starting_redshift,
+                                                  n_los_pixels,
+                                                  starting_redshift)
+    _, wedge_filtered_lightcones_high, __ = \
+            FM.remove_fixed_wedge_from_lightcones(p21c_lightcones, 
+                                                  _redshifts,
+                                                  starting_redshift,
+                                                  n_los_pixels,
+                                                  _redshifts[start+256])
+
+    _, wedge_filtered_lightcones, redshifts = \
+            FM.remove_wedge_from_lightcones(p21c_lightcones, 
+                                            _redshifts,
+                                            starting_redshift,
+                                            n_los_pixels)
+
+    assert xh_boxes.shape == lightcones.shape, \
+            "shape of ionized boxes and lightcones match but got shapes" +\
+            f"{xh_boxes.shape} and {lightcones.shape}"
+
+    if hasattr(LM, "astro_param_values"):
+        astro_param_values = LM.astro_param_values
+    else:
+        astro_param_values = None
+
+    save_dset_to_hf(f"{args.dset_dir}/{args.dset_name}.h5",
+                    {"random_seeds": LM.params["lightcone_random_seeds"], 
+                     "redshifts": redshifts,
+                     "lightcones": lightcones,
+                     "wedge_filtered_lightcones": wedge_filtered_lightcones,
+                     "wedge_filtered_lightcones_low_z": wedge_filtered_lightcones_low,
+                     "wedge_filtered_lightcones_high_z": wedge_filtered_lightcones_high,
+                     "ionized_boxes": xh_boxes},
+                    attrs = {"p21c_run_lightcone_kwargs": \
+                             str(all_params["p21c_run_lightcone_kwargs"])},
+                    astro_param_values = astro_param_values)
+
 
 def make_lightcone_dset(all_params: dict, 
                         args: argparse.ArgumentParser) -> None:
@@ -144,10 +208,9 @@ def make_lightcone_dset(all_params: dict,
 
     lightcones, wedge_filtered_lightcones, redshifts = \
             FM.remove_wedge_from_lightcones(p21c_lightcones, 
-                                            redshifts,
-                                            starting_redshift = \
-                                                    starting_redshift,
-                                            n_los_pixels = n_los_pixels)
+                                                  redshifts,
+                                                  starting_redshift,
+                                                  n_los_pixels)
 
     assert xh_boxes.shape == lightcones.shape, \
             "shape of ionized boxes and lightcones match but got shapes" +\
