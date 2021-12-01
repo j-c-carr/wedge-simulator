@@ -46,21 +46,6 @@ def read_params_from_yml_file(filename: str) -> dict:
         return params
     
 
-def modify_lightcones(all_params: dict, 
-                      args: argparse.ArgumentParser) -> None:
-    """Generates lightcones and masks for each set of initial conditions"""
-
-    UM = UtilManager()
-    CUBE_SHAPE = (256, 128, 128)
-    CUBE_DIMENSIONS = (512, 256, 256)
-
-    # Load data
-    logger.info(f"Loading data from {args.old_data}...")
-    X, Y, B, redshifts = \
-            UM.load_data_from_h5(f"scratch/datasets/{args.old_data}.h5",
-                                 cube_shape=CUBE_SHAPE)
-
-
 def save_dset_to_hf(filename: str,
                     data: dict,
                     attrs: dict = {},
@@ -161,7 +146,32 @@ def make_lightcone_dset(all_params: dict,
                     attrs = {"p21c_run_lightcone_kwargs": \
                              str(all_params["p21c_run_lightcone_kwargs"])},
                     astro_param_values = astro_param_values)
-        
+
+
+def modify_lightcone_dset(old_data_loc: str,
+                          all_params: dict, 
+                          args: argparse.ArgumentParser) -> None:
+    """Generates lightcones and masks for each set of initial conditions"""
+    """
+    Loads the data from :old_data_loc: into a UtilManager object. The data is
+    stored in numpy arrays in the UtilManager.data dictionary. For example,
+
+        UM.data["lightcones"]
+        UM.data["wedge_filtered_lightcones"]
+        UM.data["ionized_boxes"]
+        UM.data["redshifts"]
+
+    """
+
+    # Load data
+    logger.info(f"Loading data from {old_data_loc}...")
+    UM = UtilManager()
+    UM.load_data_from_h5(old_data_loc)
+
+    # ...
+    # ...
+
+
 
 def parse_args():
     """Handle the command line arguments"""
@@ -170,8 +180,8 @@ def parse_args():
     parser.add_argument("dset_name", help="name of dataset. The dataset will be saved to <dset_dir>/<dset_name>.h5")
     parser.add_argument("config_file", help="filepath to .yml configuration file")
     parser.add_argument("--make_lightcone_dset", action="store_true", help="generate lightcones")
-    parser.add_argument("--modify_lightcones", action="store_true", help="modify lightcones")
-    parser.add_argument("--old_data", help="name of an existing dataset (only used for --modify_lightcones")
+    parser.add_argument("--modify_lightcone_dset", action="store_true", help="modify lightcones")
+    parser.add_argument("--old_data_loc", help="name of an existing dataset (only used for --modify_lightcone_dset")
 
     args = parser.parse_args()
     return args
@@ -184,13 +194,10 @@ if __name__=="__main__":
     all_params = read_params_from_yml_file(args.config_file)
     logger = init_logger("test.log", __name__)
 
-    #np.random.seed(0)
-
-    UM = UtilManager()
 
     if args.make_lightcone_dset:
         make_lightcone_dset(all_params, args)
 
-    if args.plot_lightcones:
-        modify_lightcones(all_params, args)
+    if args.modify_lightcone_dset:
+        modify_lightcone_dset(all_params, args)
 

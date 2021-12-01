@@ -16,6 +16,7 @@ import numpy as np
 
 from coeval_manager import CoevalManager
 from fourier_manager import FourierManager
+from data_manager import DataManager
 
 # Prints all logging info to std.err
 logging.getLogger().addHandler(logging.StreamHandler())
@@ -73,8 +74,8 @@ def save_dset_to_hf(filename: str,
     LOGGER.info("\n----------\n")
 
     
-def make_coeval_dset(all_params: dict, 
-                     args: argparse.ArgumentParser) -> None:
+def generate_coeval_dset(all_params: dict, 
+                         args: argparse.ArgumentParser) -> None:
     """
     Generates a dataset of coeval boxes and associated wedge-filtered boxes,
     saving it to an h5 file.
@@ -108,23 +109,49 @@ def make_coeval_dset(all_params: dict,
                     attrs = {"p21c_initial_conditions": CM.ic_kwargs})
 
 
-def parse_args():
-    """Handle the command line arguments"""
+def modify_coeval_dset(old_data_loc: str,
+                       all_params: dict,
+                       args: argparse.ArgumentParser) -> None:
+    """
+    Loads the data from :old_data_loc: into a DataManager object. The data is
+    stored in numpy arrays in the DataManager.data dictionary. For example,
+
+        DM.data["brightness_temp_boxes"]
+        DM.data["wedge_filtered_brightness_temp_boxes"]
+        DM.data["ionized_boxes"]
+        DM.data["redshifts"]
+
+    """
+
+    DM = DataManager(old_data_loc)
+
+    # ...
+    # ...
+
+
+if __name__=="__main__":
+    
+    # Handle the command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("dset_dir", help="parent directory of dataset")
     parser.add_argument("dset_name", help="name of dataset. The dataset will be saved to <dset_dir>/<dset_name>.h5")
     parser.add_argument("config_file", help="filepath to .yml configuration file")
     parser.add_argument("--make_coeval_dset", action="store_true",\
                         help="generate coeval boxes dataset")
+    parser.add_argument("--modify_coeval_dset", action="store_true",\
+                        help="modify coeval boxes dataset")
+    parser.add_argument("--old_data_loc", help="filepath to old dataset (.h5 file)")
     args = parser.parse_args()
-    return args
 
-
-if __name__=="__main__":
-    
-    # Handle the command line arguments
-    args = parse_args()
     all_params = read_params_from_yml_file(args.config_file)
 
     if args.make_coeval_dset:
-        make_coeval_dset(all_params, args)
+        generate_coeval_dset(all_params, args)
+
+    elif args.modify_coeval_dset:
+        assert args.old_data_loc is not None, \
+                "Could not read the old_model_loc location, required."
+
+        modify_coeval_dset(args.old_data_loc, all_params, args)
+
+

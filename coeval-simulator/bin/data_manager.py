@@ -1,41 +1,42 @@
-import re
-import sys
 import h5py
-import logging
 
-import os
 import typing
 from typing import Optional, List
 import numpy as np
 
-def init_logger(f: str, 
-                name: str) -> logging.Logger:
-    """Instantiates logger :name: and sets logfile to :f:"""
-    logger = logging.getLogger(name)
+###############################################################################
+#                    DataManager to load data from h5 file                    #
+###############################################################################
 
-    logger.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s: %(levelname).1s %(filename)s:%(lineno)d] %(message)s")
-    file_handler = logging.FileHandler(f)
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-    return logger
+# Access data like so:
+# DM.data["wedge_filtered_brightness_temp_boxes"]
+# DM.data["brightness_temp_boxes"]
+# DM.data["ionized_boxes"]
+# DM.data["redshifts"]
+# DM.data["predicted_brightness_temp_boxes"]
 
-logger = init_logger("test.log", __name__)
 
-class UtilManager:
+class DataManager():
 
-    def __init__(self):
-    """Manager class for miscellaneous I/O operations"""
+    """
+    Loads data from h5py file. Datasets from the h5py file are stored in the
+    DataManager.data dictionary. Metadata is stored in DM.metadata dictionary
+    """
+
+    def __init__(self, filepath: str):
+        assert filepath[-3:] == ".h5", "filepath must point to an h5 file."
+
+        self.filepath = filepath
         self.data = {}
         self.dset_attrs = {}
         self.metadata = {}
 
+        self.load_data_from_h5()
+        
 
-    def load_data_from_h5(self, filepath):
+    def load_data_from_h5(self):
         """Loads all data from h5 file, returns nothing. (Typically used just
         to observe the values in a dataset)"""
-
-        self.filepath = filepath
 
         with h5py.File(self.filepath, "r") as hf:
 
@@ -75,13 +76,4 @@ class UtilManager:
             print(f"\t{k}")
         print("\n----------\n")
 
-    def write_str(self, 
-                  s: str, 
-                  filename: str) -> None:
-        """Writes string to file"""
-        assert type(s) is str
-
-        with open(filename,"w") as f:
-            f.write(s)
-            f.close()
 
