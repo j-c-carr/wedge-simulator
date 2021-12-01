@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import logging
 import numpy as np
 from tqdm import tqdm
-from filters import blackman_harris_taper, bar, sweep, new_sweep
+from filters import blackman_harris_taper, bar, sweep
 from lightcone_plot_manager import LightconePlotManager
 
 
@@ -57,7 +57,8 @@ class FourierManager():
                                      lightcones: np.ndarray, 
                                      redshifts: np.ndarray,
                                      starting_redshift: float,
-                                     n_los_pixels: int) -> List[np.ndarray]:
+                                     n_los_pixels: int,
+                                     mpc_res) -> List[np.ndarray]:
         """
         Performs wedge-removal in fourier space for each lightcone as desrcibed
         in Prelogovic et al, https://arxiv.org/abs/2107.00018.
@@ -69,6 +70,7 @@ class FourierManager():
         :starting_redshift: determines redshift of the first slice of the
                             lightcone.
         :n_los_pixels: number of pixels along the line of sight to be kept.
+        :mpc_res: resolution of each voxel (Mpc per px)
         ----------
         Returns:
         :lightcones: truncated version of the original lightcones that 
@@ -113,85 +115,11 @@ class FourierManager():
                              f"from slice {z} to {dz}")
 
                 tmp_tilde = self.fourier(tmp)
-                tmp_tilde = bar(tmp_tilde, 2)
-                self.fourier_data = new_sweep(tmp_tilde, redshifts[z])
-
-                # No nan values
-                assert np.isnan(np.sum(self.fourier_data)) == False
-                tmp = np.real(self.inverse(self.fourier_data))
-
-                # Copy the middle slice only
-                wedge_removed_lightcones[i, z] = np.copy(tmp[dz-1])
-
-            logger.info(f"Image {i} done.")
-
-        # Return the desired lightcone range
-        return lightcones[:, start:start+n_los_pixels, ...],\
-               wedge_removed_lightcones[:, start:start+n_los_pixels, ...],\
-               redshifts[start:start+n_los_pixels]
-
-
-    def remove_fixed_wedge_from_lightcones(self, 
-                                     lightcones: np.ndarray, 
-                                     redshifts: np.ndarray,
-                                     starting_redshift: float,
-                                     n_los_pixels: int,
-                                     wedge_redshift: float) -> List[np.ndarray]:
-        """
-        ONLY FOR A SINGLE EXPERIMENT -- Do not use otherwise.
-        ----------
-        Params:
-        :lightcones: lightcone brightness temperature boxes generated from 
-                     21cmFAST.
-        :redshifts: 1-D array of redshifts along the LoS.
-        :starting_redshift: determines redshift of the first slice of the
-                            lightcone.
-        :n_los_pixels: number of pixels along the line of sight to be kept.
-        ----------
-        Returns:
-        :lightcones: truncated version of the original lightcones that 
-                     match the starting redshift and n_los_pixels.
-        :wedge_filtered_lightcones: list of wedge-removed lightcones
-        :redshifts: redshift values for each pixel along the los.
-        """
-
-        assert lightcones.dtype == np.float32, \
-            f"Lightcones of dtype {lightcones.dtype}, should be np.float32"
-
-        assert redshifts.shape[0] == lightcones.shape[1], \
-            f"expected {lightcones.shape[1]}, got {redshifts.shape[0]}"
-
-        wedge_removed_lightcones = np.zeros(lightcones.shape)
-
-        # rolling window length should match length scales in the other
-        # directions.
-        window_length = lightcones.shape[-1]
-        dz = window_length // 2
-        start = np.where(np.floor(redshifts)==starting_redshift)[0][0]
-
-        # Make sure filtering algorithm has a large enough inital box
-        assert start-dz >= 0, \
-                f"Filter requires starting_redshift to be (at least)" \
-                f"at index {dz}, but starting_redshift is at {start}"
-
-        assert start+n_los_pixels+dz < lightcones.shape[1], \
-                f"Lightcones of length {lightcones.shape[1]}" \
-                f"but filter requires length {start+n_los_pixels+dz}"
-
-
-        for i, lightcone in enumerate(lightcones):
-
-            for z in tqdm(range(start, start+n_los_pixels)):
-                tmp = np.empty((window_length, *lightcone.shape[1:]))
-
-                tmp = lightcone[z-dz:z+dz]
-                tmp = blackman_harris_taper(tmp)
-
-                logger.debug(f"Removing wedge at redshift {redshifts[z]}")
-
-                tmp_tilde = self.fourier(tmp)
-                tmp_tilde = bar(tmp_tilde, 2)
-                self.fourier_data = new_sweep(tmp_tilde, wedge_redshift)
+                tmp_tilde = bar(tmp_tilde, 
+                                redshifts[z-dz],
+                                redshifts[z+dz],
+                                mpc_res)
+                self.fourier_data = sweep(tmp_tilde, redshifts[z])
 
                 # No nan values
                 assert np.isnan(np.sum(self.fourier_data)) == False

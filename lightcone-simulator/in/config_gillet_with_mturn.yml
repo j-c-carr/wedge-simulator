@@ -16,9 +16,9 @@ p21c_run_lightcone_kwargs:
   global_quantities: !!python/tuple ["brightness_temp", "xH_box"]
   direc: "/home/jccarr/scratch/tmp"
 
-# Astro param ranges, supply [min, max] values.
-astro_param_ranges:
-  HII_EFF_FACTOR: [10, 250]
+# Astro param ranges, supply (min, max) values.
+astro_param_ranges: # NO HII_EFF to keep EoR in same range
   ION_Tvir_MIN: [4, 6]
   L_X: [38, 42]
   NU_X_THRESH: [100, 1500]
+  M_TURN: [8.5, 8.9]

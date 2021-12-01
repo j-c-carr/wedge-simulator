@@ -15,7 +15,7 @@ def init_logger(f, name):
     """Instantiates logger :name: and sets logfile to :f:"""
     logger = logging.getLogger(name)
 
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     formatter = logging.Formatter("%(asctime)s: %(levelname).1s %(filename)s:%(lineno)d] %(message)s")
     file_handler = logging.FileHandler(f)
     file_handler.setFormatter(formatter)
@@ -103,7 +103,6 @@ class LightconeManager():
                     self.astro_param_objects[i].__dict__[k] for i in
                             range(self.params["num_lightcones"])], dtype=np.float32)
 
-        print(self.astro_param_values)
             
 
     def generate_lightcones(self,
