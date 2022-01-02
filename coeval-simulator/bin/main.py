@@ -34,6 +34,7 @@ def init_logger(f: str,
     logger.addHandler(file_handler)
     return logger
 
+
 LOGGER = init_logger("test.log", __name__)
 
 
@@ -50,7 +51,7 @@ def read_params_from_yml_file(filename: str) -> dict:
 
 def save_dset_to_hf(filename: str,
                     data: dict,
-                    attrs: dict = {}):
+                    attrs: dict):
 
     with h5py.File(f"{args.dset_dir}/{args.dset_name}.h5", "w") as hf:
 
@@ -86,11 +87,11 @@ def generate_coeval_dset(all_params: dict,
 
     # Load p21c initial condition parameters, if specified
     if "ic_kwargs" in all_params:
-        CM = CoevalManager(all_params["ic_kwargs"])
+        cm = CoevalManager(all_params["ic_kwargs"])
     else:
-        CM = CoevalManager()
+        cm = CoevalManager()
 
-    FM = FourierManager()
+    fm = FourierManager()
 
     # Default redshifts are z=7, 8.5, 9
     if "redshifts" in all_params:
@@ -98,15 +99,15 @@ def generate_coeval_dset(all_params: dict,
     else:
         redshifts = np.linspace(7, 8.5, 25)
 
-    bt_boxes, xh_boxes = CM.generate_coeval_boxes(redshifts)
-    wedge_filtered_boxes = FM.remove_wedge(bt_boxes, redshifts)
+    bt_boxes, xh_boxes = cm.generate_coeval_boxes(redshifts)
+    wedge_filtered_boxes = fm.remove_wedge(bt_boxes, redshifts)
 
     save_dset_to_hf(f"{args.dset_dir}/{args.dset_name}.h5",
                     {"redshifts": redshifts,
                      "brightness_temp_boxes": bt_boxes,
                      "wedge_filtered_brightness_temp_boxes": wedge_filtered_boxes,
                      "ionized_boxes": xh_boxes},
-                    attrs = {"p21c_initial_conditions": CM.ic_kwargs})
+                    attrs = {"p21c_initial_conditions": cm.ic_kwargs})
 
 
 def modify_coeval_dset(old_data_loc: str,
