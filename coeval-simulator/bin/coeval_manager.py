@@ -1,11 +1,13 @@
 """
-Script for generating coeval boxes using py21cmfast
+@author: j-c-carr
+Manager class for generating py21cmFAST coeval boxes
 """
-import typing
-from typing import Optional, List
+
+from typing import Optional
 import logging
 import numpy as np
 import py21cmfast as p21c
+
 
 def init_logger(name, f: Optional[str] = None):
     """Instantiates logger :name: and sets logfile to :f:"""
@@ -20,16 +22,20 @@ def init_logger(name, f: Optional[str] = None):
 
     return logger
 
-logger = init_logger(__name__, "test.log")
+
+logger = init_logger(__name__, "wedge_simulator.log")
 
 
-class CoevalManager():
+class CoevalManager:
 
     """
     Class for generating coeval boxes from p21cmFAST.
-    Boxes are created from a single p21c.InitialConditions object, with gets
-    instantiated based on the parameters supplied by the user in the config
-    file.
+    Boxes are created from a single p21c.InitialConditions object.
+    ----------
+    Attributes:
+    :ic_kwargs: Optional dictionary of kwargs to pass to the
+                p21c.InitialConditions constructor.
+    :box_shape: Shape of a single coeval box.
     """
 
     def __init__(self, ic_kwargs: Optional[dict] = None):
@@ -45,48 +51,42 @@ class CoevalManager():
                "Must supply BOX_LEN, HII_DIM and random_seed" 
 
         self.ic_kwargs = ic_kwargs
-        self.box_shape = (ic_kwargs["user_params"]["BOX_LEN"],
-                          ic_kwargs["user_params"]["BOX_LEN"],
-                          ic_kwargs["user_params"]["BOX_LEN"])
-
+        self.box_shape = (ic_kwargs["user_params"]["HII_DIM"],
+                          ic_kwargs["user_params"]["HII_DIM"],
+                          ic_kwargs["user_params"]["HII_DIM"])
 
     def generate_coeval_boxes(self, redshifts: np.ndarray):
         """
-        Generates coeval boxes at given redshifts using the initial
-        condition parameters specified in the constructor.
+        Generates coeval boxes at specified redshifts.
         ----------
         Params:
-        :redshifts: (np.ndarray) redshift of each coeval box
+        :redshifts: Redshift of each coeval box
         ----------
         Returns:
-        :BT: (np.ndarray) brightness temperature data, TRANSPOSED so that the
-                          los axis is the first axis
-        :XH: (np.ndarray) ionization data, TRANSPOSED so that the los axis is
-                          the first axis
+        :BT: Brightness temperature data, TRANSPOSED so that the los axis is
+             the first axis
+        :XH: Ionization data, TRANSPOSED so that the los axis is the first axis
         """
 
         logger.debug(f"Generating initial conditions...")
         initial_conditions = p21c.initial_conditions(**self.ic_kwargs)
 
-        
         BT = np.empty((redshifts.shape[0], *self.box_shape), dtype=np.float32)
         XH = np.empty((redshifts.shape[0], *self.box_shape), dtype=np.float32)
 
         logger.debug("Generating coeval boxes...")
         for i, z in enumerate(redshifts):
 
-            coeval_box = p21c.run_coeval(
-                    redshift = z,
-                    init_box = initial_conditions)
+            coeval_box = p21c.run_coeval(redshift=z,
+                                         init_box=initial_conditions)
 
             # Make the LoS along the first axis
-            bt = np.transpose(coeval_box.brightness_temp, (2,1,0))
-            xh = np.transpose(coeval_box.xH_box, (2,1,0))
+            bt = np.transpose(coeval_box.brightness_temp, (2, 1, 0))
+            xh = np.transpose(coeval_box.xH_box, (2, 1, 0))
 
             # Assert the shapes match the expected shape
             assert bt.shape == self.box_shape, \
-                    "expected {} but got {}".format(
-                            self.box_shape, bt.shape)
+                   "expected {} but got {}".format(self.box_shape, bt.shape)
 
             BT[i] = bt.astype(np.float32)
             XH[i] = xh.astype(np.float32)

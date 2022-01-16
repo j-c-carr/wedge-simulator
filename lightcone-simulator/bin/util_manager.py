@@ -1,12 +1,13 @@
-import re
-import sys
+"""
+@author: j-c-carr
+
+Manager class for general purpose I/O.
+"""
+
 import h5py
 import logging
-
-import os
-import typing
-from typing import Optional, List
 import numpy as np
+
 
 def init_logger(f: str, 
                 name: str) -> logging.Logger:
@@ -20,20 +21,21 @@ def init_logger(f: str,
     logger.addHandler(file_handler)
     return logger
 
+
 logger = init_logger("test.log", __name__)
 
+
 class UtilManager:
+    """Manager class for miscellaneous I/O operations"""
 
     def __init__(self):
-    """Manager class for miscellaneous I/O operations"""
         self.data = {}
         self.dset_attrs = {}
         self.metadata = {}
-
+        self.filepath = None
 
     def load_data_from_h5(self, filepath):
-        """Loads all data from h5 file, returns nothing. (Typically used just
-        to observe the values in a dataset)"""
+        """Loads all data from h5 file"""
 
         self.filepath = filepath
 
@@ -51,37 +53,35 @@ class UtilManager:
                 # Lightcone data is stored as h5py datasets
                 if isinstance(hf[k], h5py.Dataset):
                     v = np.array(hf[k][:], dtype=np.float32)
-                    assert np.isnan(np.sum(v)) == False, \
-                            f"Error, {k} has nan values."
+                    assert np.isnan(np.sum(v)) is False, \
+                           f"Error, {k} has nan values."
                     self.data[k] = v
-            #self.data["redshifts"].reshape(-1) 
 
             # Load metadata from h5 file
             for k, v in hf.attrs.items():
                 self.dset_attrs[k] = v
 
-        # Print success message
-        print("\n----------\n")
-        print(f"data loaded from {self.filepath}")
-        print("Contents:")
+        # Success message
+        logger.info("\n----------\n")
+        logger.info(f"data loaded from {self.filepath}")
+        logger.info("Contents:")
         for k, v in self.data.items():
-            print("\t{}, shape: {}".format(k, v.shape))
-        print("\nMetadata:")
+            logger.info("\t{}, shape: {}".format(k, v.shape))
+        logger.info("\nMetadata:")
         for k in self.metadata.keys():
-            print(f"\t{k}")
-        print("\n----------\n")
-        print("\nDataset Attributes:")
+            logger.info(f"\t{k}")
+        logger.info("\n----------\n")
+        logger.info("\nDataset Attributes:")
         for k in self.dset_attrs.keys():
-            print(f"\t{k}")
-        print("\n----------\n")
+            logger.info(f"\t{k}")
+        logger.info("\n----------\n")
 
-    def write_str(self, 
-                  s: str, 
+    @staticmethod
+    def write_str(s: str,
                   filename: str) -> None:
         """Writes string to file"""
         assert type(s) is str
 
-        with open(filename,"w") as f:
+        with open(filename, "w") as f:
             f.write(s)
             f.close()
-

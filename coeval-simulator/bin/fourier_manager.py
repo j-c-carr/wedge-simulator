@@ -1,21 +1,19 @@
 """
-by Samuel Gagnon-Hartman, 2019
-modified by Jonathan Colaco Carr (jonathan.colacocarr@mail.mcgill.ca), 2021
-
-This code removes the foreground wedge for 21cm lightcones.
+Removes the foreground wedge for 21cm coeval boxes.
 The transformations applied are performed in Fourier space and are meant to 
 replicate the distortions and limitations of 'actual' datasets.
 
+@author: Samuel Gagnon-Hartman, 2019
+modified by Jonathan Colaco Carr (jonathan.colacocarr@mail.mcgill.ca), 2021
 """
+
 import logging
 import numpy as np
-import typing
-from typing import List, Optional
 from filters import coeval_bar, coeval_sweep
 
 
-def init_logger(f: str, 
-                name: str):
+def init_logger(name: str,
+                f: str): 
     """Instantiates logger :name: and sets logfile to :f:"""
     logger = logging.getLogger(name)
 
@@ -26,49 +24,46 @@ def init_logger(f: str,
     logger.addHandler(file_handler)
     return logger
 
-logger = init_logger("test.log", __name__)
 
-class FourierManager():
+logger = init_logger(__name__, "wedge_simulator.log")
+
+
+class FourierManager:
     """
-    Wrapper class for removing the wedge of a 21cmFAST coeval box in fourier
+    Wrapper class for removing the wedge of a 21cmFAST coeval box in Fourier
     space. The wedge region that is removed is described in
     https://arxiv.org/pdf/1404.2596.pdf (Liu et al., 2014)
     """
 
-    def fourier(self,
-                x: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def fourier(x: np.ndarray) -> np.ndarray:
         """
-        Applies a fourier transform to 3-D lightcone
+        Applies Fourier transform to 3D coeval box.
         """
         return np.fft.fftshift(np.fft.fftn(x))
 
-
-    def inverse(self, 
-                x: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def inverse(x: np.ndarray) -> np.ndarray:
         """
-        Applies inverse Fourier transform to return to 2D spatial map.
+        Applies inverse Fourier transform to 3D coeval box.
         """
         return np.fft.ifftn(np.fft.ifftshift(x))
 
-
-    def remove_wedge(self, 
+    def remove_wedge(self,
                      boxes: np.ndarray,
                      redshifts: np.ndarray) -> np.ndarray:
         """
-        Performs wedge-removal in fourier space for each coeval box. The
-        wedge-shaped region that is removed is formalised in 
-        https://arxiv.org/pdf/1404.2596.pdf. The implementation of
-        wedge-removal is described in Gagnon-Hartman et al.,
-        https://arxiv.org/pdf/2102.08382.pdf
+        Performs wedge-removal in Fourier space for each coeval box. The
+        The implementation of wedge-removal is described in Gagnon-Hartman
+        et al. 2021: https://arxiv.org/pdf/2102.08382.pdf
         ----------
         Params:
-        :boxes: Coeval boxes brightness temperature data generated from 
-                21cmFAST
-        :redshifts: Redshifts corresponding to each coeval box
+        :boxes:     Coeval boxes brightness temperature data  generated from
+                    21cmFAST
+        :redshifts: Redshifts corresponding to each coeval box.
         ----------
         Returns:
-        :wedge_filtered_boxes: (np.ndarray) coeval boxes with the wedge-region
-                               removed.
+        :wedge_filtered_boxes: Coeval boxes with the wedge-region removed.
         """
 
         assert boxes.dtype == np.float32, \

@@ -1,17 +1,17 @@
-import os
-import sys
-import yaml
-import h5py
-import typing
-from typing import Optional, List
+"""
+@author: j-c-carr
+
+Manager class for generating py21cmFAST lightcones.
+"""
+
 import logging
+from typing import Tuple, Any
 import numpy as np
 import py21cmfast as p21c
-from random import randint
-from pprint import pformat
 
 
-def init_logger(f, name):
+def init_logger(name: str,
+                f: str) -> logging.Logger:
     """Instantiates logger :name: and sets logfile to :f:"""
     logger = logging.getLogger(name)
 
@@ -23,30 +23,40 @@ def init_logger(f, name):
     return logger
 
 
-logger = init_logger("test.log", __name__)
+logger = init_logger(__name__, "wedge_simulator.log")
 
 
-class LightconeManager():
+class LightconeManager:
     """Manager class for creating 21cmFast Lightcones"""
 
     def __init__(self, 
                  config_params: dict) -> None:
         """
         Params:
-        :config_params: Supplied when running python script, contains all
-        information for creating lightcones
+        :config_params: Supplied when running python script, specifies all
+                        parameters for creating lightcones
         """
         self.params = config_params
 
+        self.p21c_BT = np.empty((self.params["num_lightcones"],
+                                 *self.params["original_lightcone_shape"]),
+                                dtype=np.float32)
+        self.p21c_XH = np.empty((self.params["num_lightcones"],
+                                 *self.params["original_lightcone_shape"]),
+                                dtype=np.float32)
+
+        self.lightcone_redshifts = np.empty(self.params["original_lightcone_shape"][0])
+
+        # Check if user supplies AstroParams
         self.astro_param_values = None
         if "astro_param_ranges" in self.params:
+            self.astro_param_objects = []
             self.generate_random_astroparams_from_range()
             
         # If AstroParams are supplied, must create the AstroParams object 
         if "astro_params" in self.params["p21c_run_lightcone_kwargs"]:
             self.params["p21c_run_lightcone_kwargs"]["astro_params"] = \
                 p21c.AstroParams(**self.params["p21c_run_lightcone_kwargs"]["astro_params"])
-
 
     def random_from_range(self,
                           k: str) -> float:
@@ -60,28 +70,25 @@ class LightconeManager():
         # Return 3 floating point value in range [l, r]
         return np.random.randint(l*1000, high=r*1000) / 1000
 
-
     def generate_random_astroparams_from_range(self):
-        """Generates astrophysical parameters from range for each lightcone"""
-        self.astro_param_objects = []
+        """Samples astrophysical parameters from uniform distribution for each lightcone"""
 
         logger.debug("Generating {} astroparams...".format(self.params["num_lightcones"]))
         for i in range(self.params["num_lightcones"]):
 
             _astro_args = dict([(k, self.random_from_range(k)) for k in 
-                    self.params["astro_param_ranges"].keys()])
+                                self.params["astro_param_ranges"].keys()])
 
             self.astro_param_objects.append(p21c.AstroParams(**_astro_args))
 
         # Format astro_param args to be saved to h5py file
         self.format_astro_params()
 
-
     def format_astro_params(self):
         """
         Re-formats AstroParam args so that they can be saved to h5py file as
         numpy arrays. A single np array will be saved to the h5py file for each
-        astro_param. 
+        AstroParam.
         Each entry in
             self.astro_param_values = {
                 'HII_EFF_FACTOR': [30.0, 30.0, ..., 30.0],
@@ -99,34 +106,22 @@ class LightconeManager():
             if k == "INHOMO_RECO" or k == "_name":
                 continue
 
-            self.astro_param_values[k] = np.array([
-                    self.astro_param_objects[i].__dict__[k] for i in
-                            range(self.params["num_lightcones"])], dtype=np.float32)
+            self.astro_param_values[k] = \
+                np.array([self.astro_param_objects[i].__dict__[k] for i in
+                          range(self.params["num_lightcones"])], dtype=np.float32)
 
-            
+    def generate_lightcones(self) -> Tuple[np.ndarray, Any]:
 
-    def generate_lightcones(self,
-                            debug: bool = False) -> List[np.ndarray]:
         """
         Wrapper class for generating lightcones using the 21cmFAST 
         p21c.run_lightcones method. 
         -----
         Returns:
-        :BT: (np.ndarray) Brightness temperature data from lightcones
-        :XH: (np.ndarray) Ionization data from lightcones
-        :lightcone_redshifts: (np.ndarray) redshifts values of the lightcones
+        :BT:                  Brightness temperature data from lightcones
+        :XH:                  Ionization data from lightcones
+        :lightcone_redshifts: Redshifts values of the lightcones
         """
 
-        BT = np.empty((self.params["num_lightcones"],
-                    *self.params["original_lightcone_shape"]),
-                    dtype=np.float32)
-        XH = np.empty((self.params["num_lightcones"],
-                    *self.params["original_lightcone_shape"]),
-                    dtype=np.float32)
-
-        lightcone_redshifts = np.empty(self.params["original_lightcone_shape"][0])
-
-        # For some reason, normal random number generation doesn't work
         if "lightcone_random_seeds" not in self.params.keys():
             self.params["lightcone_random_seeds"] = \
                 np.random.randint(1, high=9999, size=self.params["num_lightcones"])
@@ -145,40 +140,33 @@ class LightconeManager():
 
                 lightcone = p21c.run_lightcone(
                                 **self.params["p21c_run_lightcone_kwargs"], 
-                                astro_params = self.astro_param_objects[i],
-                                random_seed = seed[i])
+                                astro_params=self.astro_param_objects[i],
+                                random_seed=seed[i])
 
             else:
                 lightcone = p21c.run_lightcone(
                                 **self.params["p21c_run_lightcone_kwargs"], 
-                                random_seed = seed[i])
+                                random_seed=seed[i])
 
             logger.debug("Lightcone dimensions: {}".format(
                          lightcone.lightcone_dimensions))
 
             # Make the LoS along the x axis
-            bt = np.transpose(lightcone.brightness_temp, (2,1,0))
-            xh = np.transpose(lightcone.xH_box, (2,1,0))
+            bt = np.transpose(lightcone.brightness_temp, (2, 1, 0))
+            xh = np.transpose(lightcone.xH_box, (2, 1, 0))
 
             # Assert the shapes match the config file
             assert bt.shape == self.params["original_lightcone_shape"], \
-                    "expected {} but got {}".format(
-                            self.params["original_lightcone_shape"], 
-                            bt.shape)
+                   "expected {} but got {}".format(
+                        self.params["original_lightcone_shape"],
+                        bt.shape)
 
-            BT[i] = bt.astype(np.float32)
-            XH[i] = xh.astype(np.float32)
+            self.p21c_BT[i] = bt.astype(np.float32)
+            self.p21c_XH[i] = xh.astype(np.float32)
 
             if i == 0:
-                lightcone_redshifts = lightcone.lightcone_redshifts
+                self.lightcone_redshifts = lightcone.lightcone_redshifts
 
             logger.info(f"Lightcone {i} done.")
 
-        self.p21c_BT = BT
-        self.p21c_XH = XH
-        self.lightcone_redshifts = lightcone_redshifts
-
-
-        return BT, lightcone_redshifts
-
-
+        return self.p21c_BT, self.lightcone_redshifts

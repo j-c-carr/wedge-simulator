@@ -1,9 +1,9 @@
 """
 Script for manipulating coeval boxes in Fourier space (to be used in
-fourier_manager.py)
+fourier_manager.py). 
+@author: j-c-carr
 """
-import typing
-from typing import Union
+
 import numpy as np
 from scipy.integrate import quad
 
@@ -17,13 +17,13 @@ def compute_wedge_boundary(z: float,
     Formula given in https://arxiv.org/pdf/1404.2596.pdf, Eq. (13)
     ----------
     Params:
-    :z: (float) redshift
-    :fov_angle: angle of observation. Defaults to worst case at horizon
-    :O_m: Normalized matter density
-    :O_d: Normalized dark energy density
+    :z:         Redshift
+    :fov_angle: Angle of observation. Defaults to the horizon limit.
+    :O_m:       Normalized matter density
+    :O_d:       Normalized dark energy density
     ----------
     Returns:
-    Angle of the wedge region in cylindrical fourier space (float)
+    Angle of the wedge region in cylindrical fourier space
     """
 
     E = lambda z: np.sqrt(O_m * np.power(1+z, 3) + O_d)
@@ -36,22 +36,22 @@ def compute_wedge_boundary(z: float,
 
 
 def coeval_bar(x: np.ndarray,
-        maximum: int) -> np.ndarray:
+               maximum: int) -> np.ndarray:
     """
     Removes smooth foreground contamination from 21cm coeval boxes
     ----------
     Params:
-    :x: (np.ndarray) fourier-transformed coeval box.
-    :maximum: (int) maximum fourier mode in k_parallel direction (corresponding
-                    to an index along axis 0) to remove.
+    :x:       Fourier-transformed coeval box.
+    :maximum: Maximum fourier mode in k_parallel direction to remove
+              (i.e. some index along axis 0).
     ----------
     Returns:
-    :x: (np.ndarray) fourier-transformed coeval box with smooth foregrounds
-                     removed.
+    :x: Fourier-transformed coeval box with smooth foregrounds removed.
     """
+
     center = x.shape[0]//2
-    assert center-maximum > 0 and center+maximum < x.shape[0],\
-            "Number of foreground modes removed exceeds number of foreground modes"
+    assert center-maximum > 0 and center+maximum < x.shape[0], \
+        "Number of foreground modes removed exceeds number of foreground modes"
 
     x[center-maximum:center+maximum] = 0
 
@@ -64,11 +64,11 @@ def coeval_sweep(x: np.ndarray,
     Removes the cylindrical wedge region in fourier space.
     ----------
     Params:
-    :x: (np.ndarray) fourier-transformed coeval box.
-    :z: (float) redshift for which to remove the wedge.
+    :x: Fourier-transformed coeval box
+    :z: Redshift for which to remove the wedge
     ----------
     Returns:
-    :x: (np.ndarray) fourier-transformed coeval box with wedge removed.
+    :x: Fourier-transformed coeval box with wedge removed
     """
 
     DIM1 = np.shape(x)[0]
@@ -88,8 +88,8 @@ def coeval_sweep(x: np.ndarray,
             for k in range(DIM2):
 
                 yz_distance = np.sqrt((j-core)**2+(k-core)**2)
-                if yz_distance>radius:
-                    x[i,j,k] = 0j
+                if yz_distance > radius:
+                    x[i, j, k] = 0j
 
     return x
 

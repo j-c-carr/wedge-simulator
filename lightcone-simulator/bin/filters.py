@@ -1,50 +1,54 @@
-import typing
-from typing import Union
+"""
+Operations in Fourier space to remove wedge modes of simulated py21cmFAST
+lightcones.
+@author: j-c-carr
+
+"""
+
 import numpy as np
 from scipy.integrate import quad
-import matplotlib.pyplot as plt
 
 # Physical constants
-O_m = 0.31                  # matter denisty
-O_d = 0.69                  # dark matter density
-LIGHTSPEED = 299792458      # (m/s)
+O_m = 0.31                  # Normalized matter density
+O_d = 0.69                  # Normalized dark matter density
 H_0 = 69.7e3                # Hubble constant ((m/s) / Mpc)
 NU_21 = 1420                # Frequency of 21cm signal (MHz)
+LIGHTSPEED = 299792458      # Speed of light constant (m/s)
 
 ###############################################################################
 #                       Removing wedge foreground modes                       #
 ###############################################################################
 
+
 def blackman_harris_taper(x: np.ndarray) -> np.ndarray:
-    """Applies blackman harris taper function along line of sight in real space"""
+    """
+    Applies Blackman-Harris taper function to along line of sight (axis 0) of a
+    3D lightcone.
+    """
     a0 = 0.35875
     a1 = 0.48829
     a2 = 0.14128
     a3 = 0.01168
-    N = x.shape[0]
 
     bh = lambda n: a0 - \
-            a1 * np.cos(2*np.pi * n/N) + \
-            a2 * np.cos(4*np.pi * n/N) - \
-            a3 * np.cos(6*np.pi * n/N)
+                   a1 * np.cos(2*np.pi * n/x.shape[0]) + \
+                   a2 * np.cos(4*np.pi * n/x.shape[0]) - \
+                   a3 * np.cos(6*np.pi * n/x.shape[0])
 
-    bh_window = np.array([bh(n) for n in range(N)])
+    bh_window = np.array([bh(n) for n in range(x.shape[0])])
 
     return x * bh_window.reshape(-1, 1, 1)
 
 
 def compute_wedge_boundary(z: float, 
-                           fov_angle: float = 90.,
-                           O_m: float = 0.31,
-                           O_d: float = 0.69) -> float:
-    """Computes the wedge boundary at a given redshift and fov angle.
-    Formula given in Mesinger et. al 2021 Eq (4)
-    -----
+                           fov_angle: float = 90.) -> float:
+    """
+    Computes the wedge boundary at a given redshift and fov angle.
+    Formula given in Prelogovic et. al 2021 Eq (4)
+    ----------
     Params:
-    :z: (float) redshift
-    :fov_angle: angle of observation. Defaults to worst case at horizon
-    :O_m: Normalized matter density
-    :O_d: Normalized dark energy density
+    :z:         Redshift for wedge angle.
+    :fov_angle: Angle of observation. Defaults to horizon limit.
     """
 
     E = lambda z: np.sqrt(O_m * np.power(1+z, 3) + O_d)
@@ -56,42 +60,34 @@ def compute_wedge_boundary(z: float,
     return (np.sin(fov_angle*np.pi/180) * a * b) / (1+z)
 
 
-def px_to_mpc(mode: int, N, mpc_res):
-    """Converts fourier modes from px^{-1} to Mpc^{-1}"""
-    assert N > 0 and mpc_res > 0
-    return (2 * np.pi) / (N * mpc_res)
-
-
 def sweep(x: np.ndarray, 
-              z: float,
-              fov_angle: float = 90.) -> np.ndarray:
+          z: float,
+          fov_angle: float = 90.) -> np.ndarray:
     """
-    Applies blind cones to Fourier space, taking advantage of 8-fold symmetery
-    of the lightcone about the origin (center) of the box.
+    Removes wedge region in cylindrical Fourier space.
     ----------
     Parameters
-    :x: fourier-transformed lightcone
-    :z: redshift
+    :x:         Fourier-transformed lightcone
+    :z:         Redshift for wedge-angle calculation
+    :fov_angle: Horizon cut
     """
+
     assert x.shape[1] == x.shape[2], \
-            f"expected square base but got shape x.shape[1:]"
+           f"expected square base but got shape {x.shape[1:]}"
 
     eps = 1e-18
-    mid = x.shape[0]//2 # middle along los_direction
+    mid = x.shape[0]//2     # middle along los_direction
     core = x.shape[1]//2
 
     wedge_boundary_slope = compute_wedge_boundary(z, fov_angle)
 
-    wedge_angle = 90 - (np.arctan(wedge_boundary_slope) * 180 / np.pi)
-
-    # Accounts for difference in resolution
+    # Accounts for difference in resolution along LoS and transverse axes
     delta = x.shape[0] / x.shape[1]
 
     for i in range(mid):
         # Get threshold value for k_perp in Mpc
         k_parallel = i 
         radius = int(np.ceil(k_parallel / (wedge_boundary_slope + eps)))
-
 
         # Remove a box of width 2*radius
         x[mid+i, core+radius+1:, :] = 0j
@@ -124,12 +120,20 @@ def sweep(x: np.ndarray,
 ###############################################################################
 
 def compute_smooth_kperp_cutoff(zmin: float, 
-                                zmax:float) -> float:
-    """Computes the maximum frequency to remove for spectrally smooth
-    foregrounds, according to (A10) of Liu et. al's EoR formalism paper (2018)"""
+                                zmax: float) -> float:
+    """
+    Computes the maximum frequency to remove for spectrally smooth
+    foregrounds, according to Equation (A10) of Liu et. al (2018).
+    ----------
+    Params:
+    :zmin: minimum redshift of lightcone
+    :zmax: maximum redshift of lightcone
+    ----------
+    Returns:
+    :k_perp: cutoff index for maximum frequency to remove
+    """
 
     E = lambda z: np.sqrt(O_m * np.power(1+z, 3) + O_d)
-
     nu_from = lambda z: NU_21 / (1+z)
 
     k_perp = (2*np.pi * H_0 * E(zmin) * NU_21) / \
@@ -146,16 +150,15 @@ def bar(x: np.ndarray,
     Removes smooth foreground contamination from 21cm lightcone.
     ----------
     Params:
-    :x: (np.ndarray) fourier-transformed lightcone.
-    :zmin: (float) starting redshift of the box
-    :zmax: (float) ending redshift of the box
-    :maximum: (int) maximum fourier mode in k_parallel direction (corresponding
-                    to an index along axis 0) to remove.
+    :x:       Fourier-transformed lightcone
+    :zmin:    Minimum redshift of the lightcone
+    :zmax:    Maximum redshift of the lightcone
+    :mpc_res: Quotient of the size of axes 0 and 1
     ----------
     Returns:
-    :x: (np.ndarray) fourier-transformed lightcone with smooth foregrounds
-                     removed.
+    :x: Fourier-transformed lightcone with smooth foregrounds removed.
     """
+
     k_perp = compute_smooth_kperp_cutoff(zmin, zmax)
     mpc_per_px = 2 * np.pi / (x.shape[0] * mpc_res)
 
@@ -165,11 +168,3 @@ def bar(x: np.ndarray,
     x[center-maximum:center+maximum] = 0
 
     return x
-
-
-if __name__=="__main__":
-    Z1 = list(np.linspace(7, 9, 10))
-    Z2 = list(np.linspace(7.5, 9.5, 10))
-    for z1, z2 in zip(Z1, Z2):
-        cutoff = compute_smooth_kperp_cutoff(z1, z2)
-        print("redshift: {}, cutoff: {}".format(z1, cutoff))

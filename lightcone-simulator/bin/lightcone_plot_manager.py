@@ -1,5 +1,3 @@
-from tqdm import tqdm
-import typing
 from typing import Optional, List
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,12 +16,11 @@ eor_colour = colors.LinearSegmentedColormap.from_list(
     ],
 )
 plt.register_cmap(cmap=eor_colour)
-#plt.style.use("lightcones/plot_styles.mplstyle")
 
 COLORS = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-#print(COLORS)
 
-class LightconePlotManager():
+
+class LightconePlotManager:
 
     """Manager class for lightcone plotting functions."""
 
@@ -31,20 +28,17 @@ class LightconePlotManager():
                  lightcone_redshifts: np.ndarray,
                  lightcone_shape: tuple,
                  lightcone_dimensions: tuple,
-                 los_axis:int = 0, 
+                 los_axis: int = 0,
                  mpc_axis: int = 1) -> None:
         """
         Params:
-        :lightcone_redshifts: list of redshifts along the LoS
-        axis.
-        :lightcone_shape: shape of the lightcone in pixels. LoS axis
-        MUST be the first dimension.
-        :lightcone_dimensions: physical dimensions of the lightcone in
-        Mpc. LoS axis MUST be the first dimension.
-        :los_axis: line of sight axis of the lightcone. This is constant
-        for each dataset and so each instance of the LightconePlotManager
-        should have the same los_axis.
-        :mpc_axis: any axis other than the los_axis
+        :lightcone_redshifts: list of redshifts along the LoS axis.
+        :lightcone_shape:     shape of the lightcone in pixels. LoS axis
+                                           MUST be the first dimension.
+        :lightcone_dimensions: physical dimensions of the lightcone in Mpc.
+                               LoS axis MUST be the first dimension.
+        :los_axis:             line of sight axis of the lightcones.
+        :mpc_axis:             any axis other than the los_axis
         """
 
         assert los_axis != mpc_axis
@@ -57,30 +51,30 @@ class LightconePlotManager():
         self.los_axis = los_axis
         self.mpc_axis = mpc_axis
 
-        self.redshift_labels = [
-                round(self.lightcone_redshifts[i], 2) for i in
-                    range(0, self.lightcone_redshifts.shape[0],
-                        self.lightcone_redshifts.shape[0]//(3*lightcone_shape[0]//128))]
+        self.redshift_labels = \
+            [round(self.lightcone_redshifts[i], 2) for i in
+             range(0, self.lightcone_redshifts.shape[0],
+                   self.lightcone_redshifts.shape[0]//(3*lightcone_shape[0]//128))]
 
-        self.redshift_ticks = np.arange(0, lightcone_shape[los_axis],
-                step=lightcone_shape[los_axis]/len(self.redshift_labels))
+        self.redshift_ticks = \
+            np.arange(0, lightcone_shape[los_axis],
+                      step=lightcone_shape[los_axis]/len(self.redshift_labels))
 
-        self.mpc_labels = np.arange(0, lightcone_dimensions[mpc_axis],
-                step=lightcone_dimensions[mpc_axis]//6)
+        self.mpc_labels = \
+            np.arange(0, lightcone_dimensions[mpc_axis],
+                      step=lightcone_dimensions[mpc_axis]//6)
 
-        self.mpc_ticks = np.arange(0, lightcone_shape[mpc_axis], 
-                lightcone_shape[mpc_axis]/len(self.mpc_labels))
+        self.mpc_ticks = \
+            np.arange(0, lightcone_shape[mpc_axis],
+                      lightcone_shape[mpc_axis]/len(self.mpc_labels))
 
         # Default matplotlib args
-        self.kwargs = {
-                "origin": "lower",
-                "aspect": "auto",
-                "cmap": "coolwarm"
-                }
+        self.kwargs = {"origin": "lower",
+                       "aspect": "auto",
+                       "cmap": "coolwarm"}
 
-        self.width_ratios = [1,
-                lightcone_shape[los_axis]//lightcone_shape[mpc_axis]]
-
+        self.width_ratios = \
+            [1, lightcone_shape[los_axis]//lightcone_shape[mpc_axis]]
 
     def set_ticks_and_labels(self,
                              ax: List[plt.Axes],
@@ -100,19 +94,16 @@ class LightconePlotManager():
             ax[i][1].set_yticklabels([])
             # ax[i][1].set_ylabel(labels[i])
 
-
         # Put labels on last plots only
         ax[n-1][0].set_xticklabels(self.mpc_labels)
         ax[n-1][0].set_xlabel("Mpc")
         ax[n-1][1].set_xticklabels(self.redshift_labels)
         ax[n-1][1].set_xlabel(r"$z$")
 
-
     def compare_lightcones(self, 
                            prefix: str,
                            L: dict,
                            D: Optional[dict] = None,
-                           T: Optional[List[str]] = None,
                            num_samples: int = 1) -> None:
         """
         Wrapper function for plot_lightcones to plot multiple lightcones and
@@ -120,30 +111,27 @@ class LightconePlotManager():
 
         Parameters:
         -----------
-        :prefix: prefix of image filename
-        :L: dict of n sets of lightcones of shape (batch_size, *lightcone_shape)
-        :D: dict of other data to plot of form: {data_label: [X, Y]}
-        :T: Data for table plot
+        :prefix:      prefix of image filepath
+        :L:           dict of n sets of lightcones of shape (batch_size, *lightcone_shape)
+        :D:           dict of other data to plot of form: {data_label: [X, Y]}
         :num_samples: number of plots to make.
         """
 
         # Plot random samples
-        I = np.random.randint(list(L.values())[0].shape[0], size=num_samples)
-        for i in I:
+        Ix = np.random.randint(list(L.values())[0].shape[0], size=num_samples)
+        for i in Ix:
             if D is None:
-                self.plot_lightcones(np.array([l[i, ...] for l in L.values()]),
-                                    list(L.keys()))
+                self.plot_lightcones(np.array([lc[i, ...] for lc in L.values()]),
+                                     list(L.keys()))
             else:
-                self.plot_lightcones(np.array([l[i, ...] for l in L.values()]),
-                                    list(L.keys()), D=D)
-
+                self.plot_lightcones(np.array([lc[i, ...] for lc in L.values()]),
+                                     list(L.keys()), D=D)
 
             plt.tight_layout()
             plt.savefig(f"{prefix}_{i}.png", dpi=400)
             plt.close()
 
-
-    def plot_lightcones(self, 
+    def plot_lightcones(self,
                         L: np.ndarray,
                         labels: List[str],
                         mpc_slice_index: Optional[int] = None,
@@ -154,11 +142,11 @@ class LightconePlotManager():
         Plots a transverse and LoS slice of each lightcone in L. 
         -----
         Params:
-        :L: list of of n lightcones of shape (n, *lightcone_shape)
-        :labels: list of of n labels
-        :slice_index: (int) slice index for plotting
-        :D: dictionary of extra data to plot of form {data_label: [X,Y]}
-        :kwargs: (dict) matplotlib parameters
+        :L:           List of of n lightcones of shape (n, *lightcone_shape)
+        :labels:      List of of n labels
+        :slice_index: Slice index for plotting
+        :D:           Dictionary of extra data to plot of form {data_label: [X,Y]}
+        :kwargs:      Extra matplotlib parameters
         """
         
         if kwargs is None:
@@ -188,15 +176,11 @@ class LightconePlotManager():
 
             # Transverse slice plot
             trans_slice = np.take(L[i], mpc_slice_index, axis=self.los_axis)
-            pos0 = ax[i][0].imshow(trans_slice, **kwargs)
-            cbar0 = fig.colorbar(pos0, ax=ax[i][0], pad=0.01)
-            
-            # LoS slice plot + colorbar
+            ax[i][0].imshow(trans_slice, **kwargs)
+
+            # LoS slice plot
             los_slice = np.take(L[i], los_slice_index, axis=self.mpc_axis).T
-            pos1 = ax[i][1].imshow(los_slice, **kwargs)
-            cbar1 = fig.colorbar(pos1, ax=ax[i][1], pad=0.01)
-
-
+            ax[i][1].imshow(los_slice, **kwargs)
 
         # Plot extra data
         if D is not None:
@@ -214,32 +198,9 @@ class LightconePlotManager():
                 ax[i][1].set_xticks(self.redshift_ticks)
                 ax[i][1].set_xticklabels(self.redshift_labels)
                 ax[i][1].set_ylabel(label)
-                i+=1
+                i += 1
 
         ax[0][0].set_title("$\Delta T$ (Trans), $z=$ {:.2f}".format(
                                         self.lightcone_redshifts[mpc_slice_index]))
         ax[0][1].set_title(r"$\Delta T$ (LoS)")
         self.set_ticks_and_labels(ax, labels, L.shape[0])
-
-
-    def lightcone_movie(self, masks, redshifts):
-
-
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,3), dpi=300)
-        camera = Camera(fig)
-
-        for _, mask in enumerate(tqdm(masks)):
-            ax.imshow(mask.T, **self.kwargs)
-            ax.set_xticks(self.redshift_ticks)
-            ax.set_xticklabels(self.redshift_labels)
-            ax.set_yticks(self.mpc_ticks)
-            ax.set_yticklabels([])
-            plt.tight_layout()
-
-            camera.snap()
-
-
-
-        movie = camera.animate(interval=30)
-        movie.save("rolling-wedge-movie.mp4")
-

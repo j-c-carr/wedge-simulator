@@ -1,26 +1,25 @@
-import h5py
+"""
+Script for saving/loading h5 datafiles
+@author: j-c-carr
+"""
 
-import typing
-from typing import Optional, List
+import h5py
 import numpy as np
 
-###############################################################################
-#                    DataManager to load data from h5 file                    #
-###############################################################################
 
-# Access data like so:
-# DM.data["wedge_filtered_brightness_temp_boxes"]
-# DM.data["brightness_temp_boxes"]
-# DM.data["ionized_boxes"]
-# DM.data["redshifts"]
-# DM.data["predicted_brightness_temp_boxes"]
-
-
-class DataManager():
+class DataManager:
 
     """
     Loads data from h5py file. Datasets from the h5py file are stored in the
-    DataManager.data dictionary. Metadata is stored in DM.metadata dictionary
+    DataManager.data dictionary. Data from h5py Groups are store in the
+    DataManager.metadata dictionary. 
+    ----------
+    Attributes
+    :filepath:   (str) Name of h5py file.
+    :data:       (dict) All h5py Datasets (retrieved as numpy arrays) loaded 
+                        from the h5py file. 
+    :dset_attrs: (dict) Stores h5py datafile attributes.
+    :metadata:   (dict) Stores h5py Group data (retrieved as numpy arrays).
     """
 
     def __init__(self, filepath: str):
@@ -33,10 +32,8 @@ class DataManager():
 
         self.load_data_from_h5()
         
-
     def load_data_from_h5(self):
-        """Loads all data from h5 file, returns nothing. (Typically used just
-        to observe the values in a dataset)"""
+        """Loads all data from h5 file into numpy arrays"""
 
         with h5py.File(self.filepath, "r") as hf:
 
@@ -52,10 +49,9 @@ class DataManager():
                 # Lightcone data is stored as h5py datasets
                 if isinstance(hf[k], h5py.Dataset):
                     v = np.array(hf[k][:], dtype=np.float32)
-                    assert np.isnan(np.sum(v)) == False, \
-                            f"Error, {k} has nan values."
+                    assert np.isnan(np.sum(v)) is False, \
+                           f"Error, {k} has nan values."
                     self.data[k] = v
-            #self.data["redshifts"].reshape(-1) 
 
             # Load metadata from h5 file
             for k, v in hf.attrs.items():
@@ -75,5 +71,3 @@ class DataManager():
         for k in self.dset_attrs.keys():
             print(f"\t{k}")
         print("\n----------\n")
-
-

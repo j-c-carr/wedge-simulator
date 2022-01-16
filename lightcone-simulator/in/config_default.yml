@@ -16,3 +16,6 @@ p21c_run_lightcone_kwargs:
   lightcone_quantities: !!python/tuple ["brightness_temp", "xH_box"]
   global_quantities: !!python/tuple ["brightness_temp", "xH_box"]
   direc: "/home/jccarr/scratch/tmp"
+
+# BOX_LEN: length of the box in Mpc
+# HII_DIM: shape of the numpy array
